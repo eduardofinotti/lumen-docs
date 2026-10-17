@@ -31,6 +31,7 @@ const cors = {
 
 type Article = {
   pmid: string; title: string; authors: string; journal: string; year: number | null;
+  volume: string | null; issue: string | null; pages: string | null;
   publicationTypes: string[]; abstract: string; url: string;
   evidenceLevel: "high" | "mid" | "low"; evidenceLabel: string;
 };
@@ -106,7 +107,8 @@ Deno.serve(async (req) => {
     // 7. Persistência --------------------------------------------------------
     await admin.from("sources").insert(articles.map((a, i) => ({
       search_id: id, position: i + 1, pmid: a.pmid, title: a.title, authors: a.authors,
-      journal: a.journal, year: a.year, publication_types: a.publicationTypes,
+      journal: a.journal, year: a.year, volume: a.volume, issue: a.issue, pages: a.pages,
+      publication_types: a.publicationTypes,
       evidence_level: a.evidenceLevel, evidence_label: a.evidenceLabel,
       abstract: a.abstract, summary_pt: summaries[i], url: a.url,
     })));
@@ -200,19 +202,33 @@ async function efetch(pmids: string[]): Promise<Article[]> {
 function parseArticle(xml: string, pmid: string): Article | null {
   const block = xml.split("<PubmedArticle>").find((b) => b.includes(`<PMID Version="1">${pmid}</PMID>`));
   if (!block) return null;
-  const g = (re: RegExp) => (block.match(re)?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
+  const g = (re: RegExp) => decodeEntities((block.match(re)?.[1] ?? "").replace(/<[^>]+>/g, "").trim());
   const title = g(/<ArticleTitle>([\s\S]*?)<\/ArticleTitle>/);
-  const journal = g(/<Title>([\s\S]*?)<\/Title>/);
+  // Abreviação ISO ("N Engl J Med"), a usada no Vancouver; o nome completo fica de reserva.
+  const journal = g(/<ISOAbbreviation>([\s\S]*?)<\/ISOAbbreviation>/) || g(/<Title>([\s\S]*?)<\/Title>/);
   const year = Number(g(/<PubDate>[\s\S]*?<Year>(\d{4})<\/Year>/)) || null;
   const abstract = [...block.matchAll(/<AbstractText[^>]*>([\s\S]*?)<\/AbstractText>/g)]
-    .map((m) => m[1].replace(/<[^>]+>/g, "").trim()).join(" ");
+    .map((m) => decodeEntities(m[1].replace(/<[^>]+>/g, "").trim())).join(" ");
   const authorsList = [...block.matchAll(/<Author[^>]*>[\s\S]*?<LastName>(.*?)<\/LastName>[\s\S]*?<Initials>(.*?)<\/Initials>/g)]
-    .map((m) => `${m[1]} ${m[2]}`);
-  const authors = authorsList.length > 3 ? `${authorsList[0]} et al.` : authorsList.join(", ");
+    .map((m) => decodeEntities(`${m[1]} ${m[2]}`));
+  // Até 7 autores: o front usa 6 no Vancouver e o 7º só indica que há outros ("et al.").
+  const authors = authorsList.slice(0, 7).join("; ");
+  const volume = g(/<JournalIssue[^>]*>[\s\S]*?<Volume>([\s\S]*?)<\/Volume>/) || null;
+  const issue = g(/<JournalIssue[^>]*>[\s\S]*?<Issue>([\s\S]*?)<\/Issue>/) || null;
+  const pages = g(/<MedlinePgn>([\s\S]*?)<\/MedlinePgn>/) || null;
   const publicationTypes = [...block.matchAll(/<PublicationType[^>]*>(.*?)<\/PublicationType>/g)].map((m) => m[1]);
   const { evidenceLevel, evidenceLabel } = classify(publicationTypes, title);
-  return { pmid, title, authors, journal, year, publicationTypes, abstract,
+  return { pmid, title, authors, journal, year, volume, issue, pages, publicationTypes, abstract,
     url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`, evidenceLevel, evidenceLabel };
+}
+
+/** O XML do PubMed traz acentos como entidades ("K&#xf8;ber"). */
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
 }
 
 function classify(types: string[], title: string): Pick<Article, "evidenceLevel" | "evidenceLabel"> {

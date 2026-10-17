@@ -7,7 +7,7 @@ import {
   demoCookieOptions,
   encodeDemoSession,
 } from "@/lib/auth/demo-session";
-import { authErrorMessage } from "@/lib/auth/errors";
+import { authErrorMessage, INVITE_ONLY_MESSAGE } from "@/lib/auth/errors";
 import { HOME_AFTER_LOGIN, safeNextPath } from "@/lib/auth/routes";
 import {
   compactErrors,
@@ -112,10 +112,11 @@ export async function signUp(
   if (!invited) {
     return {
       status: "error",
+      message: INVITE_ONLY_MESSAGE,
       fieldErrors: {
         inviteCode: values.inviteCode
-          ? "Este código de convite não é válido ou já foi usado. Confira e tente de novo."
-          : "Este e-mail não está na lista de convidados. Informe o código de convite que você recebeu.",
+          ? "Este código não é válido ou já foi usado. Confira e tente de novo."
+          : "Este e-mail não está na lista de convidados. Informe o código que você recebeu.",
       },
       values,
     };

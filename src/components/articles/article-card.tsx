@@ -62,7 +62,8 @@ export function ArticleCard({
         <div className="min-w-0 flex-1 space-y-3">
           <h3 className="text-title text-ink">{article.title}</h3>
           <p className="text-body-sm text-ink-secondary">
-            {formatAuthors(article.authors)} {article.journal}. {article.year}. Fonte: {article.source}.
+            {formatAuthors(article.authors)} {article.journal}. {article.year && `${article.year}. `}Fonte:{" "}
+            {article.source}.
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <EvidenceBadge level={article.evidence} />

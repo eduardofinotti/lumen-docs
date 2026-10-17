@@ -1,13 +1,15 @@
 import "server-only";
 
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { DEFAULT_DATE_RANGE, isDateRange } from "@/lib/date-range";
+import { withoutClinicalNote } from "@/lib/answer-markdown";
+import { fromApiDateRange, isDateRange, toApiDateRange } from "@/lib/date-range";
 import { mockResultKeyFor, mockResults, type MockResultKey } from "@/lib/mocks/results";
 import { demoSeedSearches, type DemoSearchEntry } from "@/lib/mocks/searches";
 import { createClient } from "@/lib/supabase/server";
 import type { DateRange, Search, SearchSummary } from "@/types/search";
-import { parseSources, parseStatus } from "./guards";
+import { parseStatus, sourceRowToArticle, type SourceRow } from "./guards";
 
 // ------------------------------------------------ Modo demonstração (cookie)
 
@@ -67,8 +69,8 @@ interface SearchRow {
   status: string;
   date_range: string | null;
   answer_md: string | null;
-  sources: unknown;
   created_at: string;
+  sources: SourceRow[] | null;
 }
 
 function rowToSearch(row: SearchRow): Search {
@@ -76,9 +78,9 @@ function rowToSearch(row: SearchRow): Search {
     id: row.id,
     question: row.question,
     status: parseStatus(row.status),
-    dateRange: row.date_range && isDateRange(row.date_range) ? row.date_range : DEFAULT_DATE_RANGE,
-    answerMd: row.answer_md ?? "",
-    sources: parseSources(row.sources),
+    dateRange: fromApiDateRange(row.date_range),
+    answerMd: withoutClinicalNote(row.answer_md ?? ""),
+    sources: [...(row.sources ?? [])].sort((a, b) => a.position - b.position).map(sourceRowToArticle),
     createdAt: row.created_at,
   };
 }
@@ -121,20 +123,32 @@ export const getSearch = cache(async (id: string): Promise<Search | null> => {
 
   const { data } = await supabase
     .from("searches")
-    .select("id, question, status, date_range, answer_md, sources, created_at")
+    .select(
+      "id, question, status, date_range, answer_md, created_at, " +
+        "sources (position, pmid, title, authors, journal, year, volume, issue, pages, evidence_label, summary_pt)",
+    )
     .eq("id", id)
     .maybeSingle<SearchRow>();
 
   return data ? rowToSearch(data) : null;
 });
 
+export type CreateSearchResult = { ok: true; id: string } | { ok: false; error: string };
+
+const GENERIC_ERROR = "Não conseguimos concluir a pesquisa. Tente de novo em instantes.";
+
+/** Corpo de resposta da Edge Function `search` (sucesso ou erro). */
+interface SearchFunctionBody {
+  searchId?: string | null;
+  error?: string;
+}
+
 /**
- * Registra uma pesquisa e devolve o id. Nesta fase a resposta é sempre um mock:
- * a busca real (PubMed + síntese) entra com o backend.
+ * Faz a pesquisa e devolve o id. Com Supabase, chama a Edge Function `search`
+ * (PubMed + síntese), que grava a pesquisa e debita o crédito. Sem Supabase,
+ * registra um resultado fictício no cookie de demonstração.
  */
-export async function createSearch(question: string, dateRange: DateRange): Promise<string | null> {
-  const resultKey = mockResultKeyFor(question);
-  const result = mockResults[resultKey];
+export async function createSearch(question: string, dateRange: DateRange): Promise<CreateSearchResult> {
   const supabase = await createClient();
 
   if (!supabase) {
@@ -143,7 +157,7 @@ export async function createSearch(question: string, dateRange: DateRange): Prom
       question,
       dateRange,
       createdAt: new Date().toISOString(),
-      resultKey,
+      resultKey: mockResultKeyFor(question),
     };
     const entries = [entry, ...(await readDemoEntries())].slice(0, DEMO_MAX_SEARCHES);
     (await cookies()).set(DEMO_SEARCHES_COOKIE, encodeURIComponent(JSON.stringify(entries)), {
@@ -152,26 +166,26 @@ export async function createSearch(question: string, dateRange: DateRange): Prom
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
     });
-    return entry.id;
+    return { ok: true, id: entry.id };
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data, error } = await supabase.functions.invoke<SearchFunctionBody>("search", {
+    body: { question, dateRange: toApiDateRange(dateRange) },
+  });
 
-  const { data, error } = await supabase
-    .from("searches")
-    .insert({
-      user_id: user.id,
-      question,
-      date_range: dateRange,
-      status: "done",
-      answer_md: result.answerMd,
-      sources: result.sources,
-    })
-    .select("id")
-    .single<{ id: string }>();
+  if (error) {
+    // A função responde com { error } em pt-BR (sem crédito, recusa, falha); repassa essa mensagem.
+    if (error instanceof FunctionsHttpError) {
+      const body: unknown = await error.context.json().catch(() => null);
+      if (isFunctionBody(body) && body.error) return { ok: false, error: body.error };
+    }
+    console.error("[Lúmen] falha ao chamar a função search", error);
+    return { ok: false, error: GENERIC_ERROR };
+  }
 
-  return error ? null : data.id;
+  return data?.searchId ? { ok: true, id: data.searchId } : { ok: false, error: GENERIC_ERROR };
+}
+
+function isFunctionBody(value: unknown): value is SearchFunctionBody {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -7,6 +7,12 @@
 /** Frase fixa que encerra toda resposta. */
 export const CLINICAL_DECISION_NOTE = "A decisão clínica é do médico.";
 
+/** Tira a nota final quando ela já vem no texto (a síntese da IA termina com ela); a interface a acrescenta. */
+export function withoutClinicalNote(markdown: string): string {
+  const escaped = CLINICAL_DECISION_NOTE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return markdown.replace(new RegExp(`\\s*(\\*\\*)?${escaped}(\\*\\*)?\\s*$`), "").trimEnd();
+}
+
 export type InlineToken =
   | { type: "text"; value: string }
   | { type: "bold"; value: string }

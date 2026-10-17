@@ -25,7 +25,8 @@ export interface Article {
   /** Até 7 autores na ordem do PubMed; mais de 6 indica que há outros (Vancouver usa "et al."). */
   authors: string[];
   journal: string;
-  year: number;
+  /** Ano de publicação; `null` quando o PubMed não informa. */
+  year: number | null;
   volume?: string;
   issue?: string;
   pages?: string;

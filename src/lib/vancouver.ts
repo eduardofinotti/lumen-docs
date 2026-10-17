@@ -12,15 +12,17 @@ export function formatVancouver(article: Article): string {
       ? `${article.authors.slice(0, 6).join(", ")}, et al.`
       : `${article.authors.join(", ")}.`;
 
-  let locator = `${article.year}`;
+  let locator = article.year ? `${article.year}` : "";
   if (article.volume) {
-    locator += `;${article.volume}`;
+    locator += `${locator ? ";" : ""}${article.volume}`;
     if (article.issue) locator += `(${article.issue})`;
     if (article.pages) locator += `:${article.pages}`;
   }
 
   const title = article.title.replace(/\.$/, "");
-  return `${authors} ${title}. ${article.journal}. ${locator}. PMID: ${article.pmid}.`;
+  return [authors, `${title}.`, `${article.journal}.`, locator && `${locator}.`, `PMID: ${article.pmid}.`]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Texto copiado por "Copiar com referências": resposta, nota final e referências numeradas. */

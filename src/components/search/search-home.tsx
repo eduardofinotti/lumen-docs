@@ -13,8 +13,12 @@ import { QuestionBox } from "./question-box";
 import { SEARCH_STEPS, SearchProgress } from "./search-progress";
 import { Suggestions } from "./suggestions";
 
-/** Duração de cada etapa do carregamento (simulado nesta fase). */
-const STEP_MS = 1100;
+/**
+ * Tempo de cada etapa na tela de carregamento. A função não informa o progresso:
+ * as duas primeiras etapas avançam por tempo (gerar a busca, consultar o PubMed) e a
+ * última ("Lendo e resumindo", a mais longa) fica até a resposta chegar.
+ */
+const STEP_MS = 2500;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -50,7 +54,7 @@ export function SearchHome({
     const timer = setInterval(() => setStep((s) => Math.min(s + 1, SEARCH_STEPS.length - 1)), STEP_MS);
     const [result] = await Promise.all([
       startSearch(trimmed, dateRange),
-      wait(STEP_MS * SEARCH_STEPS.length),
+      wait(STEP_MS * (SEARCH_STEPS.length - 1)),
     ]);
     clearInterval(timer);
 

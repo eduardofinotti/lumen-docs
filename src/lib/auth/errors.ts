@@ -1,7 +1,12 @@
 import type { AuthError } from "@supabase/supabase-js";
 
+/** Mensagem do cadastro quando não há convite (pré-checagem ou recusa do trigger). */
+export const INVITE_ONLY_MESSAGE = "Cadastro por convite. Fale com a mentoria.";
+
 /** Traduz erros do Supabase Auth para mensagens que dizem o que fazer. */
 export function authErrorMessage(error: AuthError): string {
+  // O trigger de `auth.users` recusa quem não tem convite; o Auth devolve "Database error saving new user".
+  if (/database error/i.test(error.message)) return INVITE_ONLY_MESSAGE;
   switch (error.code) {
     case "invalid_credentials":
       return "E-mail ou senha incorretos. Confira e tente de novo.";

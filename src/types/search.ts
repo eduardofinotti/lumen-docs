@@ -2,7 +2,8 @@ import type { Article } from "./article";
 
 export type DateRange = "ultimo-ano" | "ultimos-5-anos" | "qualquer-data";
 
-export type SearchStatus = "pending" | "done" | "error";
+/** `no_evidence`: a busca no PubMed não trouxe artigos para a pergunta. */
+export type SearchStatus = "pending" | "done" | "error" | "no_evidence";
 
 /** Linha de `searches` no Supabase, em camelCase. */
 export interface Search {

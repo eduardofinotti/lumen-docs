@@ -36,6 +36,7 @@ export function SearchProgress({ question, current }: { question: string; curren
           );
         })}
       </ol>
+      <p className="mt-10 text-body-sm text-ink-secondary">Costuma levar de 15 a 40 segundos.</p>
     </div>
   );
 }

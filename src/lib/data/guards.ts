@@ -33,7 +33,7 @@ export function isArticle(value: unknown): value is Article {
     Array.isArray(value.authors) &&
     value.authors.every((a) => typeof a === "string") &&
     typeof value.journal === "string" &&
-    typeof value.year === "number" &&
+    (typeof value.year === "number" || value.year === null) &&
     ["volume", "issue", "pages"].every((k) => value[k] === undefined || typeof value[k] === "string") &&
     value.source === "PubMed" &&
     typeof value.evidence === "string" &&
@@ -48,5 +48,69 @@ export function parseSources(value: unknown): Article[] {
 }
 
 export function parseStatus(value: unknown): SearchStatus {
-  return value === "pending" || value === "error" ? value : "done";
+  return value === "pending" || value === "error" || value === "no_evidence" ? value : "done";
+}
+
+// ------------------------------------------- Tabela `sources` (Edge Function)
+
+/** Linha de `sources`, gravada pela Edge Function `search`. */
+export interface SourceRow {
+  position: number;
+  pmid: string;
+  title: string;
+  authors: string | null;
+  journal: string | null;
+  year: number | null;
+  volume: string | null;
+  issue: string | null;
+  pages: string | null;
+  evidence_label: string | null;
+  summary_pt: string | null;
+}
+
+/** A função classifica com rótulos próprios; aqui viram os níveis da interface. */
+const evidenceByLabel: Record<string, EvidenceLevel> = {
+  "metanálise": "revisao-sistematica",
+  "revisão sistemática": "revisao-sistematica",
+  "ensaio clínico randomizado": "ensaio-clinico-randomizado",
+  coorte: "coorte",
+  "caso-controle": "caso-controle",
+  "relato de caso": "relato-de-caso",
+  diretriz: "diretriz",
+};
+
+const summaryLines: [keyof ArticleSummary, RegExp][] = [
+  ["pergunta", /^pergunta\s*:\s*(.+)$/im],
+  ["metodo", /^m[ée]todo\s*:\s*(.+)$/im],
+  ["resultado", /^resultado\s*:\s*(.+)$/im],
+  ["limitacao", /^limita[çc][ãa]o\s*:\s*(.+)$/im],
+];
+
+/** "Pergunta: …\nMétodo: …\nResultado: …\nLimitação: …" → os quatro blocos; senão `undefined`. */
+export function parseSummary(text: string | null): ArticleSummary | undefined {
+  if (!text) return undefined;
+  const plain = text.replace(/\*\*/g, "");
+  const summary: Partial<ArticleSummary> = {};
+  for (const [key, re] of summaryLines) {
+    const value = plain.match(re)?.[1]?.trim();
+    if (!value) return undefined;
+    summary[key] = value;
+  }
+  return summary as ArticleSummary;
+}
+
+export function sourceRowToArticle(row: SourceRow): Article {
+  return {
+    pmid: row.pmid,
+    title: row.title,
+    authors: row.authors ? row.authors.split("; ").filter(Boolean) : [],
+    journal: row.journal ?? "",
+    year: row.year,
+    volume: row.volume ?? undefined,
+    issue: row.issue ?? undefined,
+    pages: row.pages ?? undefined,
+    source: "PubMed",
+    evidence: evidenceByLabel[row.evidence_label?.toLowerCase() ?? ""] ?? "outro",
+    summary: parseSummary(row.summary_pt),
+  };
 }
