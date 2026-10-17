@@ -1,0 +1,210 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Tokens do design system Lúmen (docs/design-system/tokens.json).
+ * Tema claro por padrão; `.dark` no <html> aplica os valores "dark".
+ */
+:root {
+  --surface: #fafaf8;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f2f1ec;
+  --ink: #1a1d21;
+  --ink-secondary: #4a5058;
+  --ink-muted: #80868f;
+  --line: #e6e4de;
+  --line-strong: #c9c6be;
+  --lumen: #ff6a1a;
+  --lumen-hover: #e85d10;
+  --lumen-tint: #fff1e8;
+  --on-lumen: #1a1d21;
+  --evidence-high: #1f6f4a;
+  --evidence-mid: #8a6a12;
+  --evidence-low: #6b7280;
+  --danger: #b42318;
+
+  --shadow-sm-value: 0 1px 2px rgba(26, 29, 33, 0.06);
+  --shadow-focus-value: 0 0 0 3px rgba(255, 106, 26, 0.35);
+
+  /* Variáveis do shadcn/ui apontando para os tokens Lúmen */
+  --background: var(--surface);
+  --foreground: var(--ink);
+  --card: var(--surface-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--lumen);
+  --primary-foreground: var(--on-lumen);
+  --secondary: var(--surface-sunken);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-sunken);
+  --muted-foreground: var(--ink-secondary);
+  --accent: var(--lumen-tint);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--lumen);
+  --radius: 16px;
+  --sidebar: var(--surface-raised);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--lumen);
+  --sidebar-primary-foreground: var(--on-lumen);
+  --sidebar-accent: var(--surface-sunken);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--lumen);
+}
+
+.dark {
+  --surface: #15181c;
+  --surface-raised: #1e2228;
+  --surface-sunken: #101316;
+  --ink: #f3f2ee;
+  --ink-secondary: #b4b9c1;
+  --ink-muted: #7d848d;
+  --line: #2c3138;
+  --line-strong: #3e444c;
+  --lumen: #ff7a33;
+  --lumen-hover: #ff8c4d;
+  --lumen-tint: #2a1d14;
+  --on-lumen: #15181c;
+  --evidence-high: #5fcb92;
+  --evidence-mid: #e2b84a;
+  --evidence-low: #9ca3af;
+  --danger: #f97066;
+
+  --shadow-sm-value: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@theme inline {
+  /* Cores Lúmen: bg-surface, text-ink, border-line, bg-lumen etc. */
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-ink: var(--ink);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-lumen: var(--lumen);
+  --color-lumen-hover: var(--lumen-hover);
+  --color-lumen-tint: var(--lumen-tint);
+  --color-on-lumen: var(--on-lumen);
+  --color-evidence-high: var(--evidence-high);
+  --color-evidence-mid: var(--evidence-mid);
+  --color-evidence-low: var(--evidence-low);
+  --color-danger: var(--danger);
+
+  /* Cores semânticas do shadcn/ui */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Famílias (variáveis criadas pelo next/font em layout.tsx) */
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-geist), "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), "SFMono-Regular", Menlo, monospace;
+  --font-heading: var(--font-display);
+
+  /* Escala tipográfica: text-display-xl, text-title, text-body, text-label... */
+  --text-display-xl: 56px;
+  --text-display-xl--line-height: 60px;
+  --text-display-xl--letter-spacing: -0.02em;
+  --text-display-xl--font-weight: 500;
+  --text-display-lg: 40px;
+  --text-display-lg--line-height: 44px;
+  --text-display-lg--letter-spacing: -0.015em;
+  --text-display-lg--font-weight: 500;
+  --text-display-md: 28px;
+  --text-display-md--line-height: 34px;
+  --text-display-md--font-weight: 500;
+  --text-title: 18px;
+  --text-title--line-height: 26px;
+  --text-title--font-weight: 500;
+  --text-body: 16px;
+  --text-body--line-height: 26px;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 22px;
+  --text-label: 12px;
+  --text-label--line-height: 16px;
+  --text-label--letter-spacing: 0.08em;
+  --text-label--font-weight: 500;
+  --text-code: 14px;
+  --text-code--line-height: 22px;
+
+  /* Raios */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 16px;
+  --radius-full: 999px;
+
+  /* Sombras: shadow-sm é a única sombra; shadow-focus é o anel de foco */
+  --shadow-sm: var(--shadow-sm-value);
+  --shadow-focus: var(--shadow-focus-value);
+}
+
+/* Rótulo em caixa alta: `label-caps` = text-label + uppercase + ink-secondary */
+@utility label-caps {
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  font-weight: var(--text-label--font-weight);
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+/* Anel de foco padrão do sistema */
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-value);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-surface text-ink text-body antialiased;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus-value);
+  }
+  ::selection {
+    background: var(--lumen-tint);
+    color: var(--ink);
+  }
+}
