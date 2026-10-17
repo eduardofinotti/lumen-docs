@@ -4,12 +4,25 @@
 // Secrets: ANTHROPIC_API_KEY, NCBI_API_KEY, NCBI_EMAIL (SUPABASE_URL e SERVICE_ROLE já existem no runtime)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import Anthropic from "npm:@anthropic-ai/sdk@0.52.0";
+import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 import { SYSTEM_QUERY, SYSTEM_SYNTHESIS, SYSTEM_SUMMARY } from "./prompts.ts";
 
 const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
-const MODEL = "claude-sonnet-4-5";          // trocar pelo modelo atual disponível na conta
+const MODEL = "claude-sonnet-5-5";
 const MAX_ARTICLES = 12;
+
+// Claude Sonnet 5.5 pensa por padrão (thinking adaptativo) e esse raciocínio conta no max_tokens,
+// por isso os limites têm folga. O esforço controla quanto ele pensa: baixo para tarefas curtas
+// (gerar a busca, resumir um artigo) e médio para a síntese, onde seguir as regras de citação pesa mais.
+type Effort = "low" | "medium";
+const CALLS = {
+  query: { system: SYSTEM_QUERY, effort: "low", maxTokens: 4000 },
+  synthesis: { system: SYSTEM_SYNTHESIS, effort: "medium", maxTokens: 16000 },
+  summary: { system: SYSTEM_SUMMARY, effort: "low", maxTokens: 4000 },
+} satisfies Record<string, { system: string; effort: Effort; maxTokens: number }>;
+
+/** O modelo recusou a resposta por política de segurança (stop_reason "refusal"). */
+class RefusalError extends Error {}
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +37,10 @@ type Article = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+
+  // Preenchidos depois que a pesquisa é registrada; usados no catch para marcá-la como erro.
+  let searchId: string | null = null;
+  let markFailed: ((reason: string) => Promise<void>) | null = null;
 
   try {
     // 1. Autenticação ------------------------------------------------------
@@ -46,21 +63,21 @@ Deno.serve(async (req) => {
 
     const { data: search } = await admin.from("searches")
       .insert({ user_id: user.id, question, date_range: dateRange }).select("id").single();
-    const searchId = search!.id;
+    const id: string = search!.id;
+    searchId = id;
+    markFailed = async (reason) => {
+      await admin.from("searches").update({ status: "error", error: reason }).eq("id", id);
+    };
 
     const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
     // 3. Pergunta → query PubMed ------------------------------------------
-    const q = await anthropic.messages.create({
-      model: MODEL, max_tokens: 300, system: SYSTEM_QUERY,
-      messages: [{ role: "user", content: question }],
-    });
-    const pubmedQuery = text(q).trim();
+    const pubmedQuery = await ask(anthropic, CALLS.query, question);
 
     // 4. esearch + efetch --------------------------------------------------
     const pmids = await esearch(pubmedQuery, dateRange);
     if (pmids.length === 0) {
-      await admin.from("searches").update({ status: "no_evidence", pubmed_query: pubmedQuery }).eq("id", searchId);
+      await admin.from("searches").update({ status: "no_evidence", pubmed_query: pubmedQuery }).eq("id", id);
       return json({ searchId, status: "no_evidence", pubmedQuery }, 200);
     }
     const articles = await efetch(pmids);
@@ -70,36 +87,44 @@ Deno.serve(async (req) => {
       `[${i + 1}] PMID ${a.pmid}\nTítulo: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nPeriódico/ano: ${a.journal} ${a.year ?? ""}\nResumo: ${a.abstract || "(sem resumo)"}`
     ).join("\n\n");
 
-    const s = await anthropic.messages.create({
-      model: MODEL, max_tokens: 1200, system: SYSTEM_SYNTHESIS,
-      messages: [{ role: "user", content: `PERGUNTA DO MÉDICO:\n${question}\n\nARTIGOS ENCONTRADOS:\n${context}` }],
-    });
-    const answerMd = text(s).trim();
+    const answerMd = await ask(anthropic, CALLS.synthesis,
+      `PERGUNTA DO MÉDICO:\n${question}\n\nARTIGOS ENCONTRADOS:\n${context}`);
 
     // 6. Resumo em português de cada artigo (em paralelo, curto) -----------
+    // Um resumo que falha (inclusive por recusa) não derruba a pesquisa: o card fica sem resumo.
     const summaries = await Promise.all(articles.map(async (a) => {
       if (!a.abstract) return null;
-      const r = await anthropic.messages.create({
-        model: MODEL, max_tokens: 350, system: SYSTEM_SUMMARY,
-        messages: [{ role: "user", content: `Título: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nResumo original:\n${a.abstract}` }],
-      });
-      return text(r).trim();
+      try {
+        return await ask(anthropic, CALLS.summary,
+          `Título: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nResumo original:\n${a.abstract}`);
+      } catch (e) {
+        console.error(`resumo do PMID ${a.pmid} falhou`, e);
+        return null;
+      }
     }));
 
     // 7. Persistência --------------------------------------------------------
     await admin.from("sources").insert(articles.map((a, i) => ({
-      search_id: searchId, position: i + 1, pmid: a.pmid, title: a.title, authors: a.authors,
+      search_id: id, position: i + 1, pmid: a.pmid, title: a.title, authors: a.authors,
       journal: a.journal, year: a.year, publication_types: a.publicationTypes,
       evidence_level: a.evidenceLevel, evidence_label: a.evidenceLabel,
       abstract: a.abstract, summary_pt: summaries[i], url: a.url,
     })));
-    await admin.from("searches").update({ status: "done", answer_md: answerMd, pubmed_query: pubmedQuery }).eq("id", searchId);
+    await admin.from("searches").update({ status: "done", answer_md: answerMd, pubmed_query: pubmedQuery }).eq("id", id);
 
     return json({ searchId, status: "done", answerMd, pubmedQuery,
       sources: articles.map((a, i) => ({ position: i + 1, ...a, summaryPt: summaries[i] })) });
   } catch (e) {
     console.error(e);
-    return json({ error: "Não conseguimos concluir a pesquisa. Tente de novo em instantes." }, 500);
+    const refused = e instanceof RefusalError;
+    // Sem isso a pesquisa ficaria "pending" para sempre no histórico.
+    await markFailed?.(refused ? "recusa do modelo" : String(e));
+    return json({
+      searchId,
+      error: refused
+        ? "Não foi possível responder a esta pergunta. Reformule com foco na evidência clínica."
+        : "Não conseguimos concluir a pesquisa. Tente de novo em instantes.",
+    }, refused ? 422 : 500);
   }
 });
 
@@ -107,8 +132,38 @@ Deno.serve(async (req) => {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }
-function text(m: Anthropic.Message) {
-  return m.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("");
+
+/**
+ * Uma chamada ao Claude que devolve só o texto final.
+ * `fallbacks: "default"`: se o Sonnet 5.5 recusar por política (categorias cyber ou frontier_llm),
+ * a própria API refaz a chamada em outro modelo. Recusa que sobra vira RefusalError.
+ */
+async function ask(
+  anthropic: Anthropic,
+  call: { system: string; effort: Effort; maxTokens: number },
+  content: string,
+): Promise<string> {
+  const message = await anthropic.beta.messages.create({
+    model: MODEL,
+    max_tokens: call.maxTokens,
+    system: call.system,
+    output_config: { effort: call.effort },
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    messages: [{ role: "user", content }],
+  });
+
+  if (message.stop_reason === "refusal") {
+    throw new RefusalError(`recusa: ${message.stop_details?.category ?? "sem categoria"}`);
+  }
+  // A resposta pode começar com blocos de thinking: lê só os blocos de texto.
+  const text = message.content
+    .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+  if (!text) throw new Error(`resposta vazia (stop_reason: ${message.stop_reason})`);
+  return text;
 }
 function ncbiParams(extra: Record<string, string>) {
   return new URLSearchParams({
