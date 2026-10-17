@@ -141,7 +141,7 @@ export async function signUp(
   if (!supabase) {
     // Modo demonstração: sem e-mail de confirmação, a conta já entra.
     await startDemoSession(values.email, values.fullName, values.specialty);
-    return { status: "success", values: { email: values.email } };
+    redirect(HOME_AFTER_LOGIN);
   }
 
   const { error } = await supabase.auth.signUp({

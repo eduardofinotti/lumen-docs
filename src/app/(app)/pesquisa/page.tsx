@@ -1,17 +1,20 @@
-// Provisório até a etapa 4: confirma que a rota protegida e o "Sair" funcionam.
-import { signOut } from "@/app/(auth)/actions";
-import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
+import { SearchHome } from "@/components/search/search-home";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { suggestionsBySpecialty } from "@/lib/mocks/suggestions";
+import { specialtyLabel } from "@/lib/specialties";
 
-export default function PesquisaPage() {
+export const metadata: Metadata = { title: "Pesquisa" };
+
+export default async function PesquisaPage() {
+  const profile = await getCurrentProfile();
+  const specialty = profile?.specialty ?? "clinica-medica";
+  const label = specialtyLabel(specialty);
+
   return (
-    <main className="mx-auto max-w-xl px-4 py-24">
-      <h1 className="font-display text-display-md">Pesquisa</h1>
-      <p className="mt-4 text-body text-ink-secondary">A tela de pesquisa chega na etapa 4.</p>
-      <form action={signOut} className="mt-8">
-        <Button type="submit" variant="secondary">
-          Sair
-        </Button>
-      </form>
-    </main>
+    <SearchHome
+      suggestionsTitle={specialty === "outra" || !label ? "Sugestões de pergunta" : `Sugestões em ${label}`}
+      suggestions={suggestionsBySpecialty[specialty]}
+    />
   );
 }

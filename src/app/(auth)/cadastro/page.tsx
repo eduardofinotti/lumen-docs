@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignUpForm } from "@/components/auth/signup-form";
 import { TextLink } from "@/components/auth/text-link";
-import { isDemoMode } from "@/lib/supabase/config";
 
 export const metadata: Metadata = { title: "Criar conta" };
 
@@ -17,7 +16,7 @@ export default function CadastroPage() {
         </>
       }
     >
-      <SignUpForm demoMode={isDemoMode()} />
+      <SignUpForm />
     </AuthShell>
   );
 }

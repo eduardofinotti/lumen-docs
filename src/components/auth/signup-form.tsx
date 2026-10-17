@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { signUp } from "@/app/(auth)/actions";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/validation";
@@ -16,23 +14,13 @@ import { SubmitButton } from "./submit-button";
 
 const initialState: FormState<SignUpField> = { status: "idle" };
 
-export function SignUpForm({ demoMode }: { demoMode: boolean }) {
+export function SignUpForm() {
   const [state, formAction] = useActionState(signUp, initialState);
   const errors = state.fieldErrors ?? {};
   const values = state.values ?? {};
 
   if (state.status === "success") {
-    return demoMode ? (
-      <div className="space-y-6">
-        <FormMessage tone="info">
-          Conta criada no modo demonstração. No ambiente real, enviaremos um link de confirmação
-          para {values.email}.
-        </FormMessage>
-        <Button asChild className="w-full">
-          <Link href="/pesquisa">Ir para a pesquisa</Link>
-        </Button>
-      </div>
-    ) : (
+    return (
       <div className="space-y-4">
         <h2 className="text-title">Confirme seu e-mail</h2>
         <p className="text-body text-ink-secondary">

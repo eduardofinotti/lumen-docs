@@ -1,8 +1,38 @@
-import { ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { formatAuthors, pubmedUrl } from "@/lib/evidence";
 import { cn } from "@/lib/utils";
-import type { Article } from "@/types/article";
+import type { Article, ArticleSummary } from "@/types/article";
 import { EvidenceBadge } from "./evidence-badge";
+
+const summaryLabels: [keyof ArticleSummary, string][] = [
+  ["pergunta", "Pergunta"],
+  ["metodo", "Método"],
+  ["resultado", "Resultado"],
+  ["limitacao", "Limitação"],
+];
+
+/** Resumo em português, recolhido por padrão para a lista ficar curta. */
+function ArticleSummaryDetails({ summary }: { summary: ArticleSummary }) {
+  return (
+    <details className="group rounded-md border border-line">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 py-2 text-body-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
+        Resumo em português
+        <ChevronDown
+          className="size-4 stroke-[1.5] text-ink-secondary transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        />
+      </summary>
+      <dl className="space-y-3 border-t border-line px-3 py-3">
+        {summaryLabels.map(([key, label]) => (
+          <div key={key}>
+            <dt className="label-caps">{label}</dt>
+            <dd className="mt-1 text-body-sm text-ink">{summary[key]}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
 
 /** Card de artigo: título, metadados, etiqueta de evidência, PMID e link para o PubMed. */
 export function ArticleCard({
@@ -38,6 +68,7 @@ export function ArticleCard({
             <EvidenceBadge level={article.evidence} />
             <span className="font-mono text-code text-ink-secondary">PMID {article.pmid}</span>
           </div>
+          {article.summary && <ArticleSummaryDetails summary={article.summary} />}
           <a
             href={pubmedUrl(article.pmid)}
             target="_blank"
