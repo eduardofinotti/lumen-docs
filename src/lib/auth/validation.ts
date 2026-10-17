@@ -1,3 +1,5 @@
+import { isUf } from "@/lib/specialties";
+
 export const MIN_PASSWORD_LENGTH = 8;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,11 +29,23 @@ export function validateNewPassword(password: string): string | undefined {
   return undefined;
 }
 
+export function validateFullName(fullName: string): string | undefined {
+  return fullName.length >= 3 ? undefined : "Informe seu nome completo.";
+}
+
 /** CRM: só números, até 7 dígitos. */
 export function validateCrm(crm: string): string | undefined {
   if (!crm) return undefined;
   if (!/^\d{1,7}$/.test(crm)) return "Use só os números do CRM.";
   return undefined;
+}
+
+/** CRM e UF andam juntos: os dois preenchidos ou os dois em branco. */
+export function validateCrmPair(crm: string, crmUf: string): { crm?: string; crmUf?: string } {
+  return {
+    crm: validateCrm(crm) ?? (!crm && crmUf ? "Informe o número do CRM ou deixe a UF em branco." : undefined),
+    crmUf: (crmUf && !isUf(crmUf)) || (crm && !crmUf) ? "Escolha a UF do CRM." : undefined,
+  };
 }
 
 export function hasErrors(errors: Record<string, string | undefined>): boolean {

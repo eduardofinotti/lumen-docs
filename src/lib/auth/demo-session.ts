@@ -24,7 +24,11 @@ export function decodeDemoSession(value: string | undefined): DemoSession | null
     ) {
       const specialty =
         "specialty" in parsed && typeof parsed.specialty === "string" ? parsed.specialty : null;
-      return { email: parsed.email, fullName: parsed.fullName, specialty };
+      const text = (key: string) => {
+        const value: unknown = (parsed as Record<string, unknown>)[key];
+        return typeof value === "string" ? value : null;
+      };
+      return { email: parsed.email, fullName: parsed.fullName, specialty, crm: text("crm"), crmUf: text("crmUf") };
     }
   } catch {
     // cookie corrompido: trata como sem sessão

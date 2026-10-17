@@ -17,4 +17,6 @@ export interface DemoSession {
   email: string;
   fullName: string;
   specialty: string | null;
+  crm?: string | null;
+  crmUf?: string | null;
 }

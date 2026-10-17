@@ -14,12 +14,13 @@ import {
   hasErrors,
   readField,
   readPassword,
-  validateCrm,
+  validateCrmPair,
   validateEmail,
+  validateFullName,
   validateNewPassword,
 } from "@/lib/auth/validation";
 import { isDemoInviteValid } from "@/lib/mocks/invites";
-import { isSpecialtyId, isUf } from "@/lib/specialties";
+import { isSpecialtyId } from "@/lib/specialties";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ForgotPasswordField,
@@ -28,15 +29,15 @@ import type {
   SignInField,
   SignUpField,
 } from "@/types/forms";
+import type { DemoSession } from "@/types/user";
 
 async function siteOrigin(): Promise<string> {
   const h = await headers();
   return h.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
-async function startDemoSession(email: string, fullName: string, specialty: string | null) {
-  const store = await cookies();
-  store.set(DEMO_SESSION_COOKIE, encodeDemoSession({ email, fullName, specialty }), demoCookieOptions);
+async function startDemoSession(session: DemoSession) {
+  (await cookies()).set(DEMO_SESSION_COOKIE, encodeDemoSession(session), demoCookieOptions);
 }
 
 // ---------------------------------------------------------------- Entrar
@@ -57,7 +58,7 @@ export async function signIn(
 
   const supabase = await createClient();
   if (!supabase) {
-    await startDemoSession(email, "Médico de demonstração", "endocrinologia");
+    await startDemoSession({ email, fullName: "Médico de demonstração", specialty: "endocrinologia" });
     redirect(next);
   }
 
@@ -83,20 +84,14 @@ export async function signUp(
   };
   const password = readPassword(formData, "password");
 
+  const crmErrors = validateCrmPair(values.crm, values.crmUf);
   const fieldErrors = compactErrors<SignUpField>({
-    fullName: values.fullName.length >= 3 ? undefined : "Informe seu nome completo.",
+    fullName: validateFullName(values.fullName),
     email: validateEmail(values.email),
     password: validateNewPassword(password),
     specialty: isSpecialtyId(values.specialty) ? undefined : "Escolha sua especialidade.",
-    crm:
-      validateCrm(values.crm) ??
-      (!values.crm && values.crmUf ? "Informe o número do CRM ou deixe a UF em branco." : undefined),
-    crmUf:
-      values.crmUf && !isUf(values.crmUf)
-        ? "Escolha a UF do CRM."
-        : values.crm && !values.crmUf
-          ? "Escolha a UF do CRM."
-          : undefined,
+    crm: crmErrors.crm,
+    crmUf: crmErrors.crmUf,
     inviteCode: undefined,
   });
   if (hasErrors(fieldErrors)) return { status: "error", fieldErrors, values };
@@ -124,7 +119,13 @@ export async function signUp(
 
   if (!supabase) {
     // Modo demonstração: sem e-mail de confirmação, a conta já entra.
-    await startDemoSession(values.email, values.fullName, values.specialty);
+    await startDemoSession({
+      email: values.email,
+      fullName: values.fullName,
+      specialty: values.specialty,
+      crm: values.crm || null,
+      crmUf: values.crmUf || null,
+    });
     redirect(HOME_AFTER_LOGIN);
   }
 

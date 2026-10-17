@@ -21,8 +21,8 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
       email: session.email,
       fullName: session.fullName,
       specialty: session.specialty && isSpecialtyId(session.specialty) ? session.specialty : null,
-      crm: null,
-      crmUf: null,
+      crm: session.crm ?? null,
+      crmUf: session.crmUf ?? null,
       credits: DEMO_CREDITS,
       createdAt: new Date().toISOString(),
     };

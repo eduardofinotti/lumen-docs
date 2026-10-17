@@ -23,4 +23,6 @@ export type SignUpField =
 
 export type ForgotPasswordField = "email";
 
+export type ProfileField = "fullName" | "specialty" | "crm" | "crmUf";
+
 export type ResetPasswordField = "password" | "passwordConfirm";
