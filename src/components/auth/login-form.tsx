@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { signIn, signInWithGoogle } from "@/app/(auth)/actions";
+import { signIn } from "@/app/(auth)/actions";
 import { Input } from "@/components/ui/input";
 import type { FormState, SignInField } from "@/types/forms";
 import { Field } from "./field";
@@ -19,19 +19,6 @@ export function LoginForm({ next, notice }: { next: string; notice?: string }) {
   return (
     <div className="space-y-6">
       {message && <FormMessage tone="error">{message}</FormMessage>}
-
-      <form action={signInWithGoogle}>
-        <input type="hidden" name="next" value={next} />
-        <SubmitButton variant="secondary" pendingLabel="Abrindo o Google…">
-          Continuar com Google
-        </SubmitButton>
-      </form>
-
-      <div className="flex items-center gap-4" aria-hidden="true">
-        <span className="h-px flex-1 bg-line" />
-        <span className="text-body-sm text-ink-secondary">ou</span>
-        <span className="h-px flex-1 bg-line" />
-      </div>
 
       <form action={formAction} noValidate className="space-y-5">
         <input type="hidden" name="next" value={next} />

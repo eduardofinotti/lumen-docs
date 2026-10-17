@@ -67,23 +67,6 @@ export async function signIn(
   redirect(next);
 }
 
-export async function signInWithGoogle(formData: FormData): Promise<void> {
-  const next = safeNextPath(readField(formData, "next"));
-  const supabase = await createClient();
-  if (!supabase) {
-    redirect("/entrar?erro=google-demo");
-  }
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  });
-  if (error || !data.url) redirect("/entrar?erro=link");
-  redirect(data.url);
-}
-
 // -------------------------------------------------------------- Cadastro
 
 export async function signUp(

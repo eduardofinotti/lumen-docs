@@ -28,8 +28,4 @@ export function authErrorMessage(error: AuthError): string {
 /** Mensagens para erros que chegam por `?erro=` em /entrar (vindos de /auth/callback). */
 export const callbackErrorMessages: Record<string, string> = {
   link: "O link é inválido ou expirou. Entre com e-mail e senha ou peça um novo link.",
-  convite:
-    "Este e-mail não tem convite para o Lúmen. Se você recebeu um código, crie a conta pelo cadastro.",
-  "google-demo":
-    "O acesso com Google funciona depois que o Supabase for configurado. Por enquanto, entre com e-mail e senha.",
 };

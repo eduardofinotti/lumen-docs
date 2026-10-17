@@ -3,19 +3,16 @@ import { safeNextPath } from "@/lib/auth/routes";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Destino dos links do Supabase: confirmação de e-mail, recuperação de senha e
- * retorno do Google. Troca o `code` por uma sessão e segue para `next`.
+ * Destino dos links do Supabase: confirmação de e-mail e recuperação de senha.
+ * Troca o `code` por uma sessão e segue para `next`.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
   const next = safeNextPath(searchParams.get("next"));
 
-  // O Supabase devolve o erro do trigger de convite como "Database error saving new user".
-  const errorDescription = searchParams.get("error_description") ?? "";
-  if (errorDescription) {
-    const erro = /database error/i.test(errorDescription) ? "convite" : "link";
-    return NextResponse.redirect(`${origin}/entrar?erro=${erro}`);
+  if (searchParams.get("error_description")) {
+    return NextResponse.redirect(`${origin}/entrar?erro=link`);
   }
 
   const supabase = await createClient();

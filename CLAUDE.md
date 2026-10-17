@@ -37,7 +37,7 @@ Copiar a ESTRUTURA, não o visual:
   uma frase curta acima; sugestões de ação logo abaixo da caixa.
 - Sidebar esquerda recolhível: "Nova pesquisa", "Início", e o histórico de
   perguntas (visível só logado).
-- Login numa tela só: e-mail + senha e "Continuar com Google". Sem Apple.
+- Login numa tela só: e-mail + senha. Sem Google nem Apple (só convidados entram).
 O que NÃO copiar: tema escuro por padrão (usar o tema claro definido abaixo;
 modo escuro opcional), controles de pesquisador ("Skills", "Deep", "Filter"):
 no lugar, um único seletor de data. Sugestões abaixo da caixa são perguntas
