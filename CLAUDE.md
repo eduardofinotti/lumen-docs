@@ -143,7 +143,16 @@ Sem depoimentos falsos, sem números inventados, sem preço nesta fase.
 - Commits pequenos e descritivos. Rodar `pnpm lint` e `pnpm build` antes de finalizar.
 - Não instalar bibliotecas além das listadas sem justificar.
 
+## Fase 2: backend (quando o front estiver pronto)
+O backend já está escrito em `supabase/` (migration, Edge Function `search` e
+prompts). Leia `supabase/README.md`. Ao ligar o front:
+- Trocar os mocks pela chamada `supabase.functions.invoke("search", { body })`.
+- A resposta traz `answerMd`, `sources[]` e `status`; `no_evidence` mostra a
+  mensagem "Não encontramos artigos para essa pergunta" com sugestão de ampliar.
+- Cadastro restrito: o trigger recusa e-mail sem linha em `invites`; a tela de
+  cadastro mostra "Cadastro por convite. Fale com a mentoria." nesse erro.
+
 ## Fora de escopo agora (não fazer)
-- Chamadas reais a PubMed, Semantic Scholar, arXiv ou Claude
+- Semantic Scholar e arXiv
 - Pagamento e compra de créditos
 - Painel admin
