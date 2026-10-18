@@ -10,6 +10,7 @@ import { demoSeedConversations, type DemoConversationEntry, type DemoTurnEntry }
 import { createClient } from "@/lib/supabase/server";
 import type { Conversation, DateRange, SearchSummary, Turn } from "@/types/search";
 import { parseStatus, sourceRowToArticle, type SourceRow } from "./guards";
+import { effectiveStatus } from "./turn-status";
 
 export type RunResult = { ok: true; id: string; turnId: string } | { ok: false; error: string };
 
@@ -171,7 +172,7 @@ function rowToTurn(row: TurnRow): Turn {
     position: row.position,
     question: row.question,
     standaloneQuestion: row.position > 1 ? row.standalone_question : null,
-    status: parseStatus(row.status),
+    status: effectiveStatus(parseStatus(row.status), row.created_at),
     answerMd: withoutClinicalNote(row.answer_md ?? ""),
     sources: [...(row.sources ?? [])].sort((a, b) => a.position - b.position).map(sourceRowToArticle),
     createdAt: row.created_at,
@@ -238,17 +239,19 @@ export const listConversations = cache(async (limit = 50): Promise<SearchSummary
 
   const { data } = await supabase
     .from("searches")
-    .select("id, question, updated_at, search_turns (status, position)")
+    .select("id, question, updated_at, search_turns (status, position, created_at)")
     .order("updated_at", { ascending: false })
     .order("position", { referencedTable: "search_turns", ascending: false })
     .limit(1, { referencedTable: "search_turns" })
     .limit(limit)
-    .returns<{ id: string; question: string; updated_at: string; search_turns: { status: string }[] | null }[]>();
+    .returns<{ id: string; question: string; updated_at: string; search_turns: { status: string; created_at: string }[] | null }[]>();
 
   return (data ?? []).map((row) => ({
     id: row.id,
     question: row.question,
-    status: parseStatus(row.search_turns?.[0]?.status),
+    status: row.search_turns?.[0]
+      ? effectiveStatus(parseStatus(row.search_turns[0].status), row.search_turns[0].created_at)
+      : "done",
     updatedAt: row.updated_at,
   }));
 });

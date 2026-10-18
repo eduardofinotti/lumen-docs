@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildHistory, parseRouterReply, selectReuseArticles, type HistoryTurn } from "./conversation.ts";
+import { buildHistory, isStalePending, parseRouterReply, selectReuseArticles, type HistoryTurn } from "./conversation.ts";
 
 const grave = "A colecistectomia na mesma internação reduz recorrência na pancreatite biliar grave?";
 
@@ -91,5 +91,18 @@ describe("selectReuseArticles", () => {
     expect(result[1]).toBe("3"); // depois dos citados, o turno mais recente
     expect(new Set(result).size).toBe(result.length);
     expect(result).toHaveLength(12);
+  });
+});
+
+describe("isStalePending", () => {
+  const now = new Date("2026-10-18T12:00:00Z");
+  test("pending com mais de 5 minutos está travado", () => {
+    expect(isStalePending("pending", "2026-10-18T11:54:00Z", now)).toBe(true);
+  });
+  test("pending recente ainda está em andamento", () => {
+    expect(isStalePending("pending", "2026-10-18T11:58:00Z", now)).toBe(false);
+  });
+  test("outros status nunca estão travados", () => {
+    expect(isStalePending("done", "2026-10-18T10:00:00Z", now)).toBe(false);
   });
 });

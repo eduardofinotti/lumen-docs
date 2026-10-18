@@ -8,7 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
-import { buildHistory, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
+import { buildHistory, isStalePending, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
 import { CONVERSATION_NOTE, SYSTEM_QUERY, SYSTEM_ROUTER, SYSTEM_SUMMARY, SYSTEM_SYNTHESIS } from "./prompts.ts";
 
 const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
@@ -58,7 +58,7 @@ type Article = {
 
 type TurnRow = {
   id: string; position: number; question: string; standalone_question: string | null;
-  status: string; answer_md: string | null;
+  status: string; answer_md: string | null; created_at: string;
 };
 
 type SourceRow = {
@@ -122,9 +122,19 @@ Deno.serve(async (req) => {
       dateRange = (search.date_range ?? "5y") as DateRange;
 
       const { data: turns } = await admin.from("search_turns")
-        .select("id, position, question, standalone_question, status, answer_md")
+        .select("id, position, question, standalone_question, status, answer_md, created_at")
         .eq("search_id", searchId).order("position");
       previous = (turns ?? []) as TurnRow[];
+
+      // Turno "pending" há muito tempo foi interrompido (a função caiu antes do catch):
+      // vira erro, devolve o crédito e deixa a conversa seguir.
+      for (const stale of previous.filter((t) => isStalePending(t.status, t.created_at))) {
+        const { data: marked } = await admin.from("search_turns")
+          .update({ status: "error", error: "interrompido (tempo esgotado)" })
+          .eq("id", stale.id).eq("status", "pending").select("id");
+        if (marked?.length) await refund();
+        stale.status = "error";
+      }
 
       let retrying: TurnRow | undefined;
       if (body.retryTurnId) {
@@ -149,6 +159,8 @@ Deno.serve(async (req) => {
       .insert({ search_id: searchId, position, question }).select("id").single();
     if (turnErr || !turn) {
       await refund();
+      // Na primeira pergunta, não deixa uma conversa vazia no histórico.
+      if (!followUp) await admin.from("searches").delete().eq("id", searchId);
       // Posição repetida: outra pergunta desta conversa acabou de entrar.
       if (turnErr?.code === "23505") throw new HttpError(409, BUSY);
       throw new Error(`não criou o turno: ${turnErr?.message}`);

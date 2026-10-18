@@ -64,3 +64,10 @@ export function selectReuseArticles(known: KnownArticle[], max = 12): string[] {
   );
   return [...new Set(ordered.map((a) => a.pmid))].slice(0, max);
 }
+
+/** Depois disso, um turno "pending" foi interrompido (a função caiu por tempo, por exemplo). */
+export const STALE_PENDING_MS = 5 * 60 * 1000;
+
+export function isStalePending(status: string, createdAt: string, now: Date = new Date()): boolean {
+  return status === "pending" && now.getTime() - new Date(createdAt).getTime() > STALE_PENDING_MS;
+}

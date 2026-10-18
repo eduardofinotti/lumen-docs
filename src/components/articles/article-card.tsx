@@ -84,7 +84,15 @@ export function ArticleCard({
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-title text-ink">{article.title}</h3>
-            {save && <SaveButton pmid={article.pmid} searchId={save.searchId} initialSaved={save.saved} />}
+            {save && (
+              // A chave inclui o estado do servidor: depois de salvar em outro card, este remonta sincronizado.
+              <SaveButton
+                key={`${article.pmid}-${save.saved}`}
+                pmid={article.pmid}
+                searchId={save.searchId}
+                initialSaved={save.saved}
+              />
+            )}
           </div>
           <p className="text-body-sm text-ink-secondary">
             {formatAuthors(article.authors)} {article.journal}. {article.year && `${article.year}. `}Fonte:{" "}
