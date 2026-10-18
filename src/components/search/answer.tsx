@@ -4,7 +4,8 @@ import { CLINICAL_DECISION_NOTE, parseAnswer, type InlineToken } from "@/lib/ans
 
 interface CitationProps {
   sourceCount: number;
-  onHighlight: (n: number | null) => void;
+  /** Ausente na versão de impressão, que não tem painel para destacar. */
+  onHighlight?: (n: number | null) => void;
   /** Âncora do card de cada citação; padrão `#artigo-n`. */
   anchorFor?: (n: number) => string;
   onCite?: (n: number) => void;

@@ -208,3 +208,16 @@
     color: var(--ink);
   }
 }
+
+/* Impressão (PDF da resposta): margens de página e cores fiéis ao tema claro */
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+  html,
+  body {
+    background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
