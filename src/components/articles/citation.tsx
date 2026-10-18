@@ -7,15 +7,27 @@ import { cn } from "@/lib/utils";
 export function Citation({
   n,
   onHighlight,
+  href = `#artigo-${n}`,
+  onCite,
   className,
 }: {
   n: number;
   onHighlight?: (n: number | null) => void;
+  href?: string;
+  /** Quando existe, o clique é tratado aqui (ex.: abrir e rolar até o card certo da conversa). */
+  onCite?: (n: number) => void;
   className?: string;
 }) {
   return (
     <a
-      href={`#artigo-${n}`}
+      href={href}
+      onClick={
+        onCite &&
+        ((e) => {
+          e.preventDefault();
+          onCite(n);
+        })
+      }
       onMouseEnter={onHighlight && (() => onHighlight(n))}
       onMouseLeave={onHighlight && (() => onHighlight(null))}
       onFocus={onHighlight && (() => onHighlight(n))}

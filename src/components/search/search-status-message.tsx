@@ -18,19 +18,30 @@ const messages: Record<Exclude<SearchStatus, "done">, { title: string; body: str
 };
 
 /** Lugar da resposta quando a pesquisa não terminou com artigos. */
-export function SearchStatusMessage({ status }: { status: Exclude<SearchStatus, "done"> }) {
+export function SearchStatusMessage({
+  status,
+  action,
+  headingId = "situacao",
+}: {
+  status: Exclude<SearchStatus, "done">;
+  /** Único por página: uma conversa pode ter várias mensagens dessas. */
+  headingId?: string;
+  /** Substitui o botão padrão ("Fazer nova pesquisa"); na conversa, o erro oferece "Tentar de novo". */
+  action?: React.ReactNode;
+}) {
   const { title, body } = messages[status];
   return (
-    <section className="max-w-2xl rounded-lg border border-line bg-surface-raised p-6" aria-labelledby="situacao">
-      <h2 id="situacao" className="text-title text-ink">
+    <section className="max-w-2xl rounded-lg border border-line bg-surface-raised p-6" aria-labelledby={headingId}>
+      <h2 id={headingId} className="text-title text-ink">
         {title}
       </h2>
       <p className="mt-2 text-body text-ink-secondary">{body}</p>
-      {status !== "pending" && (
-        <Button variant="secondary" className="mt-6" asChild>
-          <Link href="/pesquisa">Fazer nova pesquisa</Link>
-        </Button>
-      )}
+      {action ??
+        (status !== "pending" && (
+          <Button variant="secondary" className="mt-6" asChild>
+            <Link href="/pesquisa">Fazer nova pesquisa</Link>
+          </Button>
+        ))}
     </section>
   );
 }

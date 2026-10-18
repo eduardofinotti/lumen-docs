@@ -2,21 +2,21 @@ import { Fragment } from "react";
 import { Citation } from "@/components/articles/citation";
 import { CLINICAL_DECISION_NOTE, parseAnswer, type InlineToken } from "@/lib/answer-markdown";
 
-function Inline({
-  tokens,
-  sourceCount,
-  onHighlight,
-}: {
-  tokens: InlineToken[];
+interface CitationProps {
   sourceCount: number;
   onHighlight: (n: number | null) => void;
-}) {
+  /** Âncora do card de cada citação; padrão `#artigo-n`. */
+  anchorFor?: (n: number) => string;
+  onCite?: (n: number) => void;
+}
+
+function Inline({ tokens, sourceCount, onHighlight, anchorFor, onCite }: CitationProps & { tokens: InlineToken[] }) {
   return tokens.map((t, i) => {
     if (t.type === "bold") return <strong key={i} className="font-medium text-ink">{t.value}</strong>;
     // Só vira link a citação que aponta para um artigo da lista.
     if (t.type === "citation") {
       return t.n >= 1 && t.n <= sourceCount ? (
-        <Citation key={i} n={t.n} onHighlight={onHighlight} />
+        <Citation key={i} n={t.n} onHighlight={onHighlight} href={anchorFor?.(t.n)} onCite={onCite} />
       ) : (
         <Fragment key={i}>[{t.n}]</Fragment>
       );
@@ -26,15 +26,7 @@ function Inline({
 }
 
 /** Resposta em markdown simples; sempre termina com a nota da decisão clínica. */
-export function Answer({
-  markdown,
-  sourceCount,
-  onHighlight,
-}: {
-  markdown: string;
-  sourceCount: number;
-  onHighlight: (n: number | null) => void;
-}) {
+export function Answer({ markdown, ...citation }: CitationProps & { markdown: string }) {
   const blocks = parseAnswer(markdown);
   return (
     <div className="max-w-[68ch] space-y-5 text-body text-ink">
@@ -43,13 +35,13 @@ export function Answer({
           <ul key={i} className="list-disc space-y-3 pl-5 marker:text-ink-muted">
             {block.items.map((item, j) => (
               <li key={j}>
-                <Inline tokens={item} sourceCount={sourceCount} onHighlight={onHighlight} />
+                <Inline tokens={item} {...citation} />
               </li>
             ))}
           </ul>
         ) : (
           <p key={i}>
-            <Inline tokens={block.content} sourceCount={sourceCount} onHighlight={onHighlight} />
+            <Inline tokens={block.content} {...citation} />
           </p>
         ),
       )}

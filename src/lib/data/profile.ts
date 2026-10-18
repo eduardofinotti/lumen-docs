@@ -7,7 +7,7 @@ import { isSpecialtyId } from "@/lib/specialties";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/user";
 
-export const DEMO_CREDITS = 20;
+export const DEMO_CREDITS = 999;
 
 /** Perfil de quem está logado, ou `null`. Memorizado por requisição. */
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {

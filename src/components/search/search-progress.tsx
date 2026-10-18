@@ -3,14 +3,32 @@ import { cn } from "@/lib/utils";
 
 export const SEARCH_STEPS = ["Entendendo a pergunta", "Buscando artigos", "Lendo e resumindo"];
 
-/** Carregamento em etapas. `current` = índice da etapa em andamento (igual ao total quando tudo terminou). */
-export function SearchProgress({ question, current }: { question: string; current: number }) {
+/** Etapas de uma continuação: o Lúmen pode buscar de novo ou reler os artigos já encontrados. */
+export const FOLLOW_UP_STEPS = ["Entendendo a pergunta", "Buscando ou relendo artigos", "Lendo e resumindo"];
+
+/**
+ * Carregamento em etapas. `current` = índice da etapa em andamento (igual ao total quando tudo terminou).
+ * Sem `question`, mostra só as etapas (dentro da conversa, a pergunta já aparece acima).
+ */
+export function SearchProgress({
+  question,
+  current,
+  steps = SEARCH_STEPS,
+}: {
+  question?: string;
+  current: number;
+  steps?: string[];
+}) {
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <p className="label-caps">Pesquisando</p>
-      <p className="mt-3 font-display text-display-md text-balance">{question}</p>
-      <ol className="mt-10 space-y-4" aria-live="polite">
-        {SEARCH_STEPS.map((label, i) => {
+    <div className={cn(question && "mx-auto w-full max-w-2xl")}>
+      {question && (
+        <>
+          <p className="label-caps">Pesquisando</p>
+          <p className="mt-3 mb-10 font-display text-display-md text-balance">{question}</p>
+        </>
+      )}
+      <ol className="space-y-4" aria-live="polite">
+        {steps.map((label, i) => {
           const state = i < current ? "feito" : i === current ? "atual" : "aguardando";
           return (
             <li key={label} className="flex items-center gap-3" aria-current={state === "atual" ? "step" : undefined}>
@@ -36,7 +54,9 @@ export function SearchProgress({ question, current }: { question: string; curren
           );
         })}
       </ol>
-      <p className="mt-10 text-body-sm text-ink-secondary">Costuma levar de 15 a 40 segundos.</p>
+      <p className={cn("text-body-sm text-ink-secondary", question ? "mt-10" : "mt-6")}>
+        Costuma levar de 15 a 40 segundos.
+      </p>
     </div>
   );
 }

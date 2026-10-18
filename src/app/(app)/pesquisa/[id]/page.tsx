@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ResultView } from "@/components/search/result-view";
+import { ConversationView } from "@/components/conversation/conversation-view";
 import { getConversation } from "@/lib/data/conversations";
 
 type Params = Promise<{ id: string }>;
@@ -13,5 +13,5 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function ResultadoPage({ params }: { params: Params }) {
   const conversation = await getConversation((await params).id);
   if (!conversation) notFound();
-  return <ResultView conversation={conversation} />;
+  return <ConversationView key={conversation.id} conversation={conversation} />;
 }

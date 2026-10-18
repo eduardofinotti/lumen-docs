@@ -39,16 +39,23 @@ export function ArticleCard({
   article,
   index,
   highlighted = false,
+  anchorId = `artigo-${index}`,
+  anchorKey,
   className,
 }: {
   article: Article;
   index: number;
   highlighted?: boolean;
+  /** `null`: sem id (a mesma resposta aparece no painel e na lista do celular). */
+  anchorId?: string | null;
+  /** Marca o card para a conversa achar o visível ao clicar numa citação. */
+  anchorKey?: string;
   className?: string;
 }) {
   return (
     <article
-      id={`artigo-${index}`}
+      id={anchorId ?? undefined}
+      data-anchor={anchorKey}
       className={cn(
         "scroll-mt-24 rounded-lg border border-line bg-surface-raised p-6 transition-colors",
         highlighted && "bg-lumen-tint",
