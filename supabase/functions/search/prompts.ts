@@ -41,3 +41,14 @@ Resultado: o achado principal com número, quando houver.
 Limitação: a principal limitação, se o resumo mencionar; senão "Não informada no resumo."
 
 Máximo 90 palavras. Não acrescente conduta nem opinião.`;
+
+export const SYSTEM_ROUTER = `Você recebe uma conversa entre um médico e o Lúmen (assistente de evidência científica), a lista de artigos já encontrados nessa conversa e uma nova mensagem do médico. Decida como responder a nova mensagem.
+
+Responda SOMENTE com um objeto JSON, sem texto antes ou depois:
+{"action": "search" | "reuse", "standaloneQuestion": "...", "pubmedQuery": "..." | null}
+
+- "standaloneQuestion": a nova mensagem reescrita como uma pergunta clínica completa em português, que faça sentido sozinha, sem pronomes ou elipses que dependam da conversa. Ex.: depois de uma pergunta sobre colecistectomia na pancreatite biliar leve, "e na grave?" vira "A colecistectomia na mesma internação reduz recorrência na pancreatite biliar grave?".
+- "action": "reuse" quando a mensagem é uma dúvida sobre a resposta ou os artigos já mostrados (detalhes de um estudo, população, método, números, limitações, comparação entre eles). "search" quando muda a população, a intervenção, a exposição, o desfecho ou pede algo que os artigos listados não cobrem. Na dúvida, "search".
+- "pubmedQuery": só quando "action" é "search". Busca do PubMed para a standaloneQuestion, com termos MeSH ([MeSH Terms]) e sinônimos em texto livre ([Title/Abstract]) unidos por OR, grupos unidos por AND, e "humans[MeSH Terms]". Sem filtros de data. Quando "action" é "reuse", use null.`;
+
+export const CONVERSATION_NOTE = `Esta é uma pergunta de continuação. O bloco "CONVERSA ATÉ AQUI" serve só de contexto para entender a pergunta; não cite nada dele. As citações [n] valem somente para a lista de ARTIGOS ENCONTRADOS desta resposta, e todas as regras acima continuam valendo.`;

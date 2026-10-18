@@ -1,21 +1,27 @@
 // Lúmen · Edge Function `search`
-// Fluxo: pergunta em pt-BR → query PubMed (Claude) → esearch → efetch → síntese (Claude) → grava no banco.
-// Deploy: supabase functions deploy search --no-verify-jwt=false
+// Uma pesquisa é uma conversa (`searches`) com turnos (`search_turns`); cada turno tem suas fontes.
+// Primeira pergunta: query PubMed (Claude) → esearch → efetch → síntese (Claude) → banco.
+// Continuação: o roteador (Claude) reescreve a pergunta e decide entre busca nova e reaproveitar
+// os artigos já encontrados; depois segue o mesmo caminho.
+// Deploy: supabase functions deploy search
 // Secrets: ANTHROPIC_API_KEY, NCBI_API_KEY, NCBI_EMAIL (SUPABASE_URL e SERVICE_ROLE já existem no runtime)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
-import { SYSTEM_QUERY, SYSTEM_SYNTHESIS, SYSTEM_SUMMARY } from "./prompts.ts";
+import { buildHistory, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
+import { CONVERSATION_NOTE, SYSTEM_QUERY, SYSTEM_ROUTER, SYSTEM_SUMMARY, SYSTEM_SYNTHESIS } from "./prompts.ts";
 
 const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const MODEL = "claude-sonnet-5-5";
 const MAX_ARTICLES = 12;
+const MAX_TURNS = 20;
 
 // Claude Sonnet 5.5 pensa por padrão (thinking adaptativo) e esse raciocínio conta no max_tokens,
 // por isso os limites têm folga. O esforço controla quanto ele pensa: baixo para tarefas curtas
-// (gerar a busca, resumir um artigo) e médio para a síntese, onde seguir as regras de citação pesa mais.
+// (rotear, gerar a busca, resumir um artigo) e médio para a síntese, onde seguir as regras de citação pesa mais.
 type Effort = "low" | "medium";
 const CALLS = {
+  router: { system: SYSTEM_ROUTER, effort: "low", maxTokens: 4000 },
   query: { system: SYSTEM_QUERY, effort: "low", maxTokens: 4000 },
   synthesis: { system: SYSTEM_SYNTHESIS, effort: "medium", maxTokens: 16000 },
   summary: { system: SYSTEM_SUMMARY, effort: "low", maxTokens: 4000 },
@@ -24,23 +30,52 @@ const CALLS = {
 /** O modelo recusou a resposta por política de segurança (stop_reason "refusal"). */
 class RefusalError extends Error {}
 
+/** Erro com resposta HTTP própria (sem crédito, conversa ocupada, limite…). Nada foi cobrado. */
+class HttpError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+const BUSY = "Aguarde a resposta anterior.";
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type DateRange = "1y" | "5y" | "all";
+
 type Article = {
   pmid: string; title: string; authors: string; journal: string; year: number | null;
   volume: string | null; issue: string | null; pages: string | null;
+  pmcid: string | null; doi: string | null;
   publicationTypes: string[]; abstract: string; url: string;
   evidenceLevel: "high" | "mid" | "low"; evidenceLabel: string;
+  /** Resumo em português já gerado (artigo que apareceu antes na conversa). */
+  summaryPt?: string | null;
 };
+
+type TurnRow = {
+  id: string; position: number; question: string; standalone_question: string | null;
+  status: string; answer_md: string | null;
+};
+
+type SourceRow = {
+  pmid: string; title: string; authors: string | null; journal: string | null; year: number | null;
+  volume: string | null; issue: string | null; pages: string | null; pmcid: string | null; doi: string | null;
+  publication_types: string[] | null; evidence_level: string | null; evidence_label: string | null;
+  abstract: string | null; summary_pt: string | null; url: string | null; position: number; turn_id: string;
+};
+
+type Body = { question?: string; dateRange?: DateRange; searchId?: string; retryTurnId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  // Preenchidos depois que a pesquisa é registrada; usados no catch para marcá-la como erro.
+  // Preenchidos quando o turno é criado; usados no catch para marcá-lo como erro e devolver o crédito.
   let searchId: string | null = null;
+  let turnId: string | null = null;
   let markFailed: ((reason: string) => Promise<void>) | null = null;
 
   try {
@@ -51,37 +86,144 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
     const { data: { user }, error: authErr } = await supabaseUser.auth.getUser();
-    if (authErr || !user) return json({ error: "Não autenticado." }, 401);
+    if (authErr || !user) return json({ error: "Não autenticado.", refunded: false }, 401);
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const debit = async () => {
+      const { data: ok } = await admin.rpc("debit_credit", { p_user: user.id });
+      if (!ok) throw new HttpError(402, "Seus créditos acabaram.");
+    };
+    const refund = () => admin.rpc("refund_credit", { p_user: user.id });
 
-    const { question, dateRange = "5y" } = await req.json() as { question: string; dateRange?: "1y" | "5y" | "all" };
-    if (!question || question.trim().length < 8) return json({ error: "Escreva uma pergunta mais completa." }, 400);
+    const body = await req.json() as Body;
+    const followUp = Boolean(body.searchId);
 
-    // 2. Crédito -----------------------------------------------------------
-    const { data: ok } = await admin.rpc("debit_credit", { p_user: user.id });
-    if (!ok) return json({ error: "Seus créditos acabaram." }, 402);
+    // 2. Conversa e turno ----------------------------------------------------
+    let dateRange: DateRange = body.dateRange ?? "5y";
+    let question = (body.question ?? "").trim();
+    let previous: TurnRow[] = [];
+    let position = 1;
 
-    const { data: search } = await admin.from("searches")
-      .insert({ user_id: user.id, question, date_range: dateRange }).select("id").single();
-    const id: string = search!.id;
-    searchId = id;
+    if (!followUp) {
+      if (question.length < 8) throw new HttpError(400, "Escreva uma pergunta mais completa.");
+      await debit();
+      const { data: search, error } = await admin.from("searches")
+        .insert({ user_id: user.id, question, date_range: dateRange }).select("id").single();
+      if (error || !search) {
+        await refund();
+        throw new Error(`não criou a conversa: ${error?.message}`);
+      }
+      searchId = search.id as string;
+    } else {
+      const { data: search } = await admin.from("searches")
+        .select("id, date_range").eq("id", body.searchId!).eq("user_id", user.id).maybeSingle();
+      if (!search) throw new HttpError(404, "Pesquisa não encontrada.");
+      searchId = search.id as string;
+      dateRange = (search.date_range ?? "5y") as DateRange;
+
+      const { data: turns } = await admin.from("search_turns")
+        .select("id, position, question, standalone_question, status, answer_md")
+        .eq("search_id", searchId).order("position");
+      previous = (turns ?? []) as TurnRow[];
+
+      let retrying: TurnRow | undefined;
+      if (body.retryTurnId) {
+        retrying = previous.find((t) => t.id === body.retryTurnId && t.status === "error");
+        if (!retrying) throw new HttpError(400, "Não foi possível refazer esta pergunta.");
+        question = retrying.question;
+        position = retrying.position;
+        previous = previous.filter((t) => t.id !== retrying!.id);
+      } else {
+        if (question.length < 3) throw new HttpError(400, "Escreva a pergunta com um pouco mais de detalhe.");
+        position = Math.max(0, ...previous.map((t) => t.position)) + 1;
+      }
+      if (previous.some((t) => t.status === "pending")) throw new HttpError(409, BUSY);
+      if (previous.filter((t) => t.status !== "error").length >= MAX_TURNS) {
+        throw new HttpError(409, "Esta conversa chegou ao limite. Comece uma nova pesquisa.");
+      }
+      await debit();
+      if (retrying) await admin.from("search_turns").delete().eq("id", retrying.id);
+    }
+
+    const { data: turn, error: turnErr } = await admin.from("search_turns")
+      .insert({ search_id: searchId, position, question }).select("id").single();
+    if (turnErr || !turn) {
+      await refund();
+      // Posição repetida: outra pergunta desta conversa acabou de entrar.
+      if (turnErr?.code === "23505") throw new HttpError(409, BUSY);
+      throw new Error(`não criou o turno: ${turnErr?.message}`);
+    }
+    const id = turn.id as string;
+    const sid = searchId;
+    turnId = id;
     markFailed = async (reason) => {
-      await admin.from("searches").update({ status: "error", error: reason }).eq("id", id);
+      await admin.from("search_turns").update({ status: "error", error: reason }).eq("id", id);
+      if (position === 1) await admin.from("searches").update({ status: "error", error: reason }).eq("id", sid);
+      await refund();
+    };
+    /** Grava o turno e marca a atividade da conversa (e as colunas antigas de `searches`, até a 0004). */
+    const saveTurn = async (fields: { status: string; answer_md?: string; pubmed_query: string | null }) => {
+      await admin.from("search_turns").update(fields).eq("id", id);
+      const legacy = position === 1
+        ? { status: fields.status, answer_md: fields.answer_md ?? null, pubmed_query: fields.pubmed_query }
+        : {};
+      await admin.from("searches").update({ updated_at: new Date().toISOString(), ...legacy }).eq("id", sid);
     };
 
     const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
-    // 3. Pergunta → query PubMed ------------------------------------------
-    const pubmedQuery = await ask(anthropic, CALLS.query, question);
+    // 3. Roteamento (só nas continuações) -------------------------------------
+    let known: SourceRow[] = [];
+    let decision: RouterDecision = { action: "search", standaloneQuestion: question, pubmedQuery: null };
+    const history = buildHistory(previous.map((t) => ({
+      question: t.question, standaloneQuestion: t.standalone_question, answerMd: t.answer_md,
+    })));
 
-    // 4. esearch + efetch --------------------------------------------------
-    const pmids = await esearch(pubmedQuery, dateRange);
-    if (pmids.length === 0) {
-      await admin.from("searches").update({ status: "no_evidence", pubmed_query: pubmedQuery }).eq("id", id);
-      return json({ searchId, status: "no_evidence", pubmedQuery }, 200);
+    if (followUp) {
+      const { data: rows } = await admin.from("sources")
+        .select("pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, publication_types, evidence_level, evidence_label, abstract, summary_pt, url, position, turn_id")
+        .eq("search_id", sid);
+      const turnIds = new Set(previous.map((t) => t.id));
+      known = ((rows ?? []) as SourceRow[]).filter((r) => turnIds.has(r.turn_id));
+      const articleList = [...new Map(known.map((r) => [r.pmid, r])).values()]
+        .map((r) => `PMID ${r.pmid} · ${r.title} · ${(r.publication_types ?? []).join(", ")}`).join("\n");
+      decision = parseRouterReply(
+        await ask(anthropic, CALLS.router,
+          `CONVERSA ATÉ AQUI:\n${history}\n\nARTIGOS JÁ ENCONTRADOS:\n${articleList || "(nenhum)"}\n\nNOVA MENSAGEM DO MÉDICO:\n${question}`),
+        question,
+      );
+      if (decision.action === "reuse" && known.length === 0) decision = { ...decision, action: "search" };
+      await admin.from("search_turns")
+        .update({ standalone_question: decision.standaloneQuestion, action: decision.action }).eq("id", id);
+    } else {
+      await admin.from("search_turns").update({ action: "search" }).eq("id", id);
     }
-    const articles = await efetch(pmids);
+    const standalone = decision.standaloneQuestion;
+    const shownStandalone = followUp ? standalone : null;
+
+    // 4. Artigos: busca nova ou reaproveitados --------------------------------
+    let articles: Article[];
+    let pubmedQuery: string | null = null;
+
+    if (decision.action === "search") {
+      pubmedQuery = decision.pubmedQuery ?? await ask(anthropic, CALLS.query, standalone);
+      const pmids = await esearch(pubmedQuery, dateRange);
+      if (pmids.length === 0) {
+        await saveTurn({ status: "no_evidence", pubmed_query: pubmedQuery });
+        return json({ searchId: sid, turnId: id, status: "no_evidence", standaloneQuestion: shownStandalone });
+      }
+      // Artigo que já apareceu na conversa reaproveita o resumo em português.
+      const knownSummaries = new Map(known.filter((r) => r.summary_pt).map((r) => [r.pmid, r.summary_pt]));
+      articles = (await efetch(pmids)).map((a) => ({ ...a, summaryPt: knownSummaries.get(a.pmid) ?? null }));
+    } else {
+      const turnsById = new Map(previous.map((t) => [t.id, t]));
+      const pmids = selectReuseArticles(known.map((r) => {
+        const t = turnsById.get(r.turn_id);
+        return { pmid: r.pmid, cited: Boolean(t?.answer_md?.includes(`[${r.position}]`)), turnPosition: t?.position ?? 0 };
+      }));
+      const byPmid = new Map(known.map((r) => [r.pmid, r]));
+      articles = pmids.map((pmid) => rowToArticle(byPmid.get(pmid)!));
+    }
 
     // 5. Síntese em português ---------------------------------------------
     const context = articles.map((a, i) =>
@@ -89,11 +231,13 @@ Deno.serve(async (req) => {
     ).join("\n\n");
 
     const answerMd = await ask(anthropic, CALLS.synthesis,
-      `PERGUNTA DO MÉDICO:\n${question}\n\nARTIGOS ENCONTRADOS:\n${context}`);
+      (followUp ? `${CONVERSATION_NOTE}\n\nCONVERSA ATÉ AQUI:\n${history}\n\n` : "") +
+      `PERGUNTA DO MÉDICO:\n${standalone}\n\nARTIGOS ENCONTRADOS:\n${context}`);
 
-    // 6. Resumo em português de cada artigo (em paralelo, curto) -----------
+    // 6. Resumo em português de cada artigo novo (em paralelo, curto) ------
     // Um resumo que falha (inclusive por recusa) não derruba a pesquisa: o card fica sem resumo.
     const summaries = await Promise.all(articles.map(async (a) => {
+      if (a.summaryPt) return a.summaryPt;
       if (!a.abstract) return null;
       try {
         return await ask(anthropic, CALLS.summary,
@@ -105,24 +249,29 @@ Deno.serve(async (req) => {
     }));
 
     // 7. Persistência --------------------------------------------------------
-    await admin.from("sources").insert(articles.map((a, i) => ({
-      search_id: id, position: i + 1, pmid: a.pmid, title: a.title, authors: a.authors,
+    const { error: sourcesErr } = await admin.from("sources").insert(articles.map((a, i) => ({
+      search_id: sid, turn_id: id, position: i + 1, pmid: a.pmid, title: a.title, authors: a.authors,
       journal: a.journal, year: a.year, volume: a.volume, issue: a.issue, pages: a.pages,
-      publication_types: a.publicationTypes,
+      pmcid: a.pmcid, doi: a.doi, publication_types: a.publicationTypes,
       evidence_level: a.evidenceLevel, evidence_label: a.evidenceLabel,
       abstract: a.abstract, summary_pt: summaries[i], url: a.url,
     })));
-    await admin.from("searches").update({ status: "done", answer_md: answerMd, pubmed_query: pubmedQuery }).eq("id", id);
+    if (sourcesErr) throw new Error(`não gravou as fontes: ${sourcesErr.message}`);
+    await saveTurn({ status: "done", answer_md: answerMd, pubmed_query: pubmedQuery });
 
-    return json({ searchId, status: "done", answerMd, pubmedQuery,
-      sources: articles.map((a, i) => ({ position: i + 1, ...a, summaryPt: summaries[i] })) });
+    return json({ searchId: sid, turnId: id, status: "done", standaloneQuestion: shownStandalone });
   } catch (e) {
+    if (e instanceof HttpError) {
+      return json({ searchId, turnId, error: e.message, refunded: false }, e.status);
+    }
     console.error(e);
     const refused = e instanceof RefusalError;
-    // Sem isso a pesquisa ficaria "pending" para sempre no histórico.
+    // Sem isso o turno ficaria "pending" para sempre e o crédito seria perdido.
     await markFailed?.(refused ? "recusa do modelo" : String(e));
     return json({
       searchId,
+      turnId,
+      refunded: markFailed !== null,
       error: refused
         ? "Não foi possível responder a esta pergunta. Reformule com foco na evidência clínica."
         : "Não conseguimos concluir a pesquisa. Tente de novo em instantes.",
@@ -133,6 +282,18 @@ Deno.serve(async (req) => {
 // ---------------------------------------------------------------------------
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+}
+
+function rowToArticle(r: SourceRow): Article {
+  return {
+    pmid: r.pmid, title: r.title, authors: r.authors ?? "", journal: r.journal ?? "", year: r.year,
+    volume: r.volume, issue: r.issue, pages: r.pages, pmcid: r.pmcid, doi: r.doi,
+    publicationTypes: r.publication_types ?? [], abstract: r.abstract ?? "",
+    url: r.url ?? `https://pubmed.ncbi.nlm.nih.gov/${r.pmid}/`,
+    evidenceLevel: (r.evidence_level ?? "low") as Article["evidenceLevel"],
+    evidenceLabel: r.evidence_label ?? "Outro",
+    summaryPt: r.summary_pt,
+  };
 }
 
 /**
@@ -200,7 +361,8 @@ async function efetch(pmids: string[]): Promise<Article[]> {
 
 // Parser mínimo por regex: suficiente para título, autores, periódico, ano, tipos e resumo.
 function parseArticle(xml: string, pmid: string): Article | null {
-  const block = xml.split("<PubmedArticle>").find((b) => b.includes(`<PMID Version="1">${pmid}</PMID>`));
+  // O primeiro <PMID> do bloco é o do artigo; os seguintes podem ser de comentários e erratas.
+  const block = xml.split("<PubmedArticle>").find((b) => b.match(/<PMID[^>]*>(\d+)<\/PMID>/)?.[1] === pmid);
   if (!block) return null;
   const g = (re: RegExp) => decodeEntities((block.match(re)?.[1] ?? "").replace(/<[^>]+>/g, "").trim());
   const title = g(/<ArticleTitle>([\s\S]*?)<\/ArticleTitle>/);
@@ -216,9 +378,13 @@ function parseArticle(xml: string, pmid: string): Article | null {
   const volume = g(/<JournalIssue[^>]*>[\s\S]*?<Volume>([\s\S]*?)<\/Volume>/) || null;
   const issue = g(/<JournalIssue[^>]*>[\s\S]*?<Issue>([\s\S]*?)<\/Issue>/) || null;
   const pages = g(/<MedlinePgn>([\s\S]*?)<\/MedlinePgn>/) || null;
+  // Identificadores do próprio artigo: a primeira ArticleIdList de PubmedData (as seguintes são das referências).
+  const ids = block.match(/<PubmedData>[\s\S]*?<ArticleIdList>([\s\S]*?)<\/ArticleIdList>/)?.[1] ?? "";
+  const pmcid = ids.match(/<ArticleId IdType="pmc">(PMC\d+)<\/ArticleId>/)?.[1] ?? null;
+  const doi = ids.match(/<ArticleId IdType="doi">([\s\S]*?)<\/ArticleId>/)?.[1]?.trim() || null;
   const publicationTypes = [...block.matchAll(/<PublicationType[^>]*>(.*?)<\/PublicationType>/g)].map((m) => m[1]);
   const { evidenceLevel, evidenceLabel } = classify(publicationTypes, title);
-  return { pmid, title, authors, journal, year, volume, issue, pages, publicationTypes, abstract,
+  return { pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, publicationTypes, abstract,
     url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`, evidenceLevel, evidenceLabel };
 }
 
