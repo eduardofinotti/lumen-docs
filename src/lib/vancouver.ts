@@ -1,5 +1,5 @@
 import type { Article } from "@/types/article";
-import type { Search } from "@/types/search";
+import type { Turn } from "@/types/search";
 import { CLINICAL_DECISION_NOTE, markdownToPlainText } from "./answer-markdown";
 
 /**
@@ -25,15 +25,18 @@ export function formatVancouver(article: Article): string {
     .join(" ");
 }
 
-/** Texto copiado por "Copiar com referências": resposta, nota final e referências numeradas. */
-export function buildCopyText(search: Search): string {
+/**
+ * Texto copiado por "Copiar com referências": pergunta, resposta, nota final e referências.
+ * Numa continuação, a pergunta é a completa ("e na grave?" sozinho não faz sentido fora da conversa).
+ */
+export function buildCopyText(title: string, turn: Turn): string {
   const parts = [
-    `Pergunta: ${search.question}`,
-    markdownToPlainText(search.answerMd),
+    `Pergunta: ${turn.standaloneQuestion ?? title}`,
+    markdownToPlainText(turn.answerMd),
     CLINICAL_DECISION_NOTE,
   ];
-  if (search.sources.length > 0) {
-    const refs = search.sources.map((a, i) => `${i + 1}. ${formatVancouver(a)}`).join("\n");
+  if (turn.sources.length > 0) {
+    const refs = turn.sources.map((a, i) => `${i + 1}. ${formatVancouver(a)}`).join("\n");
     parts.push(`Referências\n${refs}`);
   }
   return parts.join("\n\n");

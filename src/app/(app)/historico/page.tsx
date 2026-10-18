@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { listSearches } from "@/lib/data/searches";
+import { listConversations } from "@/lib/data/conversations";
 import { formatDateTime } from "@/lib/format";
 import type { SearchStatus } from "@/types/search";
 
@@ -17,7 +17,7 @@ const statusLabels: Partial<Record<SearchStatus, string>> = {
 };
 
 export default async function HistoricoPage() {
-  const searches = await listSearches(HISTORY_LIMIT);
+  const searches = await listConversations(HISTORY_LIMIT);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-6 pb-24 sm:px-6 sm:pt-10">
@@ -45,7 +45,7 @@ export default async function HistoricoPage() {
                 >
                   <span className="block text-body text-ink">{s.question}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-x-3 text-body-sm text-ink-secondary">
-                    <time dateTime={s.createdAt}>{formatDateTime(s.createdAt)}</time>
+                    <time dateTime={s.updatedAt}>{formatDateTime(s.updatedAt)}</time>
                     {label && <span className="rounded-full border border-line-strong px-2 text-body-sm">{label}</span>}
                   </span>
                 </Link>

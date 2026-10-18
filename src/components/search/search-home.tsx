@@ -5,8 +5,7 @@ import { useState } from "react";
 import { startSearch } from "@/app/(app)/pesquisa/actions";
 import { LogoMark } from "@/components/brand/logo";
 import { DEFAULT_DATE_RANGE } from "@/lib/date-range";
-import { findPatientIdentifier } from "@/lib/privacy";
-import { MIN_QUESTION_LENGTH } from "@/lib/question";
+import { validateQuestion } from "@/lib/question";
 import type { DateRange } from "@/types/search";
 import { PatientBanner } from "./patient-banner";
 import { QuestionBox } from "./question-box";
@@ -38,13 +37,9 @@ export function SearchHome({
 
   async function run(text: string) {
     const trimmed = text.trim();
-    if (trimmed.length < MIN_QUESTION_LENGTH) {
-      setError("Escreva a pergunta com um pouco mais de detalhe.");
-      return;
-    }
-    const identifier = findPatientIdentifier(trimmed);
-    if (identifier) {
-      setError(identifier);
+    const problem = validateQuestion(trimmed, { followUp: false });
+    if (problem) {
+      setError(problem);
       return;
     }
 

@@ -30,6 +30,9 @@ export interface Article {
   volume?: string;
   issue?: string;
   pages?: string;
+  /** Texto completo gratuito no PubMed Central, quando existe. */
+  pmcid?: string;
+  doi?: string;
   source: ArticleSource;
   evidence: EvidenceLevel;
   summary?: ArticleSummary;

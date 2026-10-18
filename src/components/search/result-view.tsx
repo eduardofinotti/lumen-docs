@@ -5,7 +5,7 @@ import { ArticleCard } from "@/components/articles/article-card";
 import { dateRangeLabel } from "@/lib/date-range";
 import { formatDateTime } from "@/lib/format";
 import { buildCopyText } from "@/lib/vancouver";
-import type { Search } from "@/types/search";
+import type { Conversation } from "@/types/search";
 import { Answer } from "./answer";
 import { CopyButton } from "./copy-button";
 import { SearchStatusMessage } from "./search-status-message";
@@ -14,7 +14,9 @@ import { SearchStatusMessage } from "./search-status-message";
  * Resultado de uma pesquisa: resposta à esquerda e artigos à direita (desktop)
  * ou abaixo (celular). Passar o mouse numa citação destaca o card do artigo.
  */
-export function ResultView({ search }: { search: Search }) {
+export function ResultView({ conversation }: { conversation: Conversation }) {
+  // Provisório até a tela da conversa: mostra só a primeira resposta.
+  const search = { ...conversation.turns[0], question: conversation.title, dateRange: conversation.dateRange };
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const count = search.sources.length;
   const done = search.status === "done";
@@ -30,7 +32,7 @@ export function ResultView({ search }: { search: Search }) {
         </p>
         {done && (
           <div className="mt-6">
-            <CopyButton text={buildCopyText(search)} />
+            <CopyButton text={buildCopyText(conversation.title, conversation.turns[0])} />
           </div>
         )}
       </header>

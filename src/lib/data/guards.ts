@@ -64,6 +64,8 @@ export interface SourceRow {
   volume: string | null;
   issue: string | null;
   pages: string | null;
+  pmcid: string | null;
+  doi: string | null;
   evidence_label: string | null;
   summary_pt: string | null;
 }
@@ -109,6 +111,8 @@ export function sourceRowToArticle(row: SourceRow): Article {
     volume: row.volume ?? undefined,
     issue: row.issue ?? undefined,
     pages: row.pages ?? undefined,
+    pmcid: row.pmcid ?? undefined,
+    doi: row.doi ?? undefined,
     source: "PubMed",
     evidence: evidenceByLabel[row.evidence_label?.toLowerCase() ?? ""] ?? "outro",
     summary: parseSummary(row.summary_pt),
