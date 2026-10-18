@@ -25,10 +25,19 @@ Entorno
 6. Histórico de pesquisas do usuário, reabrível.
 7. Copiar resposta com referências em formato Vancouver.
 8. Três perguntas sugeridas por especialidade na tela inicial.
+9. Conversa contínua: depois da primeira resposta, o médico continua perguntando
+   no mesmo contexto ("e na grave?"). O Lúmen reescreve a pergunta completa
+   (mostra "Entendi: …") e decide entre busca nova e reaproveitar os artigos já
+   encontrados. Até 20 perguntas por conversa; 1 crédito por pergunta, devolvido
+   se a pergunta falhar ("Tentar de novo").
+10. Artigos salvos: lista única (/salvos), com referência Vancouver para copiar
+    e link para o texto completo (PubMed Central, revista ou PubMed).
+11. Baixar uma resposta em PDF (/imprimir/[turnId], "Salvar como PDF" do navegador).
 Regras fixas da síntese: nunca dar conduta; sempre terminar lembrando que a
 decisão clínica é do médico; só citar PMIDs recebidos da busca.
-v2 (não fazer agora): alertas de novos artigos, comparar dois artigos,
-Semantic Scholar e arXiv, biblioteca pessoal de artigos salvos.
+Próxima etapa: Semantic Scholar e arXiv.
+v2 (não fazer agora): alertas de novos artigos, comparar dois artigos, pastas
+de artigos salvos.
 
 ## Referência de layout
 Prints em `docs/referencias/` (consensus-home.png, consensus-login.png).
@@ -67,6 +76,8 @@ src/app/(app)/pesquisa/page.tsx       tela principal (protegida)
 src/app/(app)/pesquisa/[id]/page.tsx  resultado de uma pesquisa
 src/app/(app)/historico/page.tsx      histórico do usuário
 src/app/(app)/conta/page.tsx          perfil e créditos
+src/app/(app)/salvos/page.tsx         artigos salvos
+src/app/(print)/imprimir/[turnId]/    PDF de uma resposta (sem o shell do app)
 src/components/                       componentes por domínio
 src/lib/supabase/{client,server,middleware}.ts
 src/lib/mocks/                        dados fictícios da fase de front
@@ -79,10 +90,16 @@ src/types/
 - Após cadastro, cria linha em `profiles` (trigger no Supabase, não no front).
 
 ## Modelo de dados (Supabase) — criar migrations em `supabase/migrations`
-profiles: id (uuid, FK auth.users), full_name, specialty, crm, crm_uf, credits int default 20, created_at
-searches: id, user_id, question text, status (pending|done|error), answer_md text,
-          sources jsonb, created_at
-Habilitar RLS: usuário só lê/escreve as próprias linhas.
+profiles: id (uuid, FK auth.users), full_name, specialty, crm, crm_uf, credits int default 999, created_at
+searches (a conversa): id, user_id, question (primeira pergunta), date_range, created_at, updated_at
+search_turns (cada pergunta): id, search_id, position, question, standalone_question,
+          action (search|reuse), status (pending|done|error|no_evidence), answer_md, pubmed_query, error
+sources (artigos de cada resposta): turn_id, search_id, position ([n]), pmid, título, autores,
+          periódico, ano, volume, número, páginas, pmcid, doi, nível de evidência, resumo_pt
+saved_articles: user_id, pmid (único por usuário), cópia dos dados do artigo, search_id
+invites: e-mail autorizado ou código de uso único
+Habilitar RLS: usuário só lê/escreve as próprias linhas; turnos e fontes só a Edge Function escreve.
+Créditos: 999 por conta enquanto não há preço.
 
 ## Design — identidade Lúmen
 O design system está em `docs/design-system/` (tokens.json, README.md e logos).
@@ -147,8 +164,10 @@ Sem depoimentos falsos, sem números inventados, sem preço nesta fase.
 O backend já está escrito em `supabase/` (migration, Edge Function `search` e
 prompts). Leia `supabase/README.md`. Ao ligar o front:
 - Trocar os mocks pela chamada `supabase.functions.invoke("search", { body })`.
-- A resposta traz `answerMd`, `sources[]` e `status`; `no_evidence` mostra a
-  mensagem "Não encontramos artigos para essa pergunta" com sugestão de ampliar.
+- Corpo `{ question, dateRange }` (primeira pergunta) ou `{ searchId, question }`
+  (continuação) ou `{ searchId, retryTurnId }` (tentar de novo); a resposta traz
+  `searchId`, `turnId` e `status`. `no_evidence` mostra a mensagem "Não
+  encontramos artigos para essa pergunta" com sugestão de ampliar.
 - Cadastro restrito: o trigger recusa e-mail sem linha em `invites`; a tela de
   cadastro mostra "Cadastro por convite. Fale com a mentoria." nesse erro.
 

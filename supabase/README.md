@@ -1,9 +1,10 @@
 # Lúmen · Backend (fase 2)
 
 ## O que está aqui
-- `migrations/0001_init.sql`: profiles, invites (cadastro restrito), searches, sources, RLS e a função `debit_credit`.
-- `functions/search/index.ts`: a Edge Function de pesquisa (pergunta → query PubMed → esearch/efetch → síntese → banco).
-- `functions/search/prompts.ts`: os três prompts (gerar query, síntese, resumo por artigo).
+- `migrations/`: schema (ver "Migrations" abaixo).
+- `functions/search/index.ts`: a Edge Function de pesquisa (pergunta → roteador nas continuações → query PubMed → esearch/efetch → síntese → banco).
+- `functions/search/conversation.ts`: lógica pura da conversa (roteador, histórico, artigos reaproveitados), testada com `pnpm test`.
+- `functions/search/prompts.ts`: os prompts (roteador da continuação, gerar query, síntese, resumo por artigo).
 
 ## Passo a passo
 1. Instale a CLI: `npm i -g supabase` e faça `supabase login`.
@@ -21,13 +22,33 @@
    ```sql
    insert into public.invites (email, invited_by) values ('seu@email.com', 'admin');
    ```
-7. No front, chame a função com o token do usuário logado:
+7. No front, chame a função com o token do usuário logado (`src/lib/data/conversations.ts`):
    ```ts
-   const { data, error } = await supabase.functions.invoke("search", {
-     body: { question, dateRange: "5y" },
-   });
+   // primeira pergunta: cria a conversa
+   await supabase.functions.invoke("search", { body: { question, dateRange: "5y" } });
+   // continuação na mesma conversa
+   await supabase.functions.invoke("search", { body: { searchId, question: "e na grave?" } });
+   // tentar de novo uma pergunta que deu erro (mesma posição)
+   await supabase.functions.invoke("search", { body: { searchId, retryTurnId } });
    ```
-   A resposta tem `answerMd`, `sources[]` (com `position`, `pmid`, `title`, `evidenceLabel`, `summaryPt`, `url`) e `status` (`done` | `no_evidence`).
+   Sucesso: `{ searchId, turnId, status: "done" | "no_evidence", standaloneQuestion }`.
+   Erro: `{ error, searchId?, turnId?, refunded }`. Com `turnId`, a pergunta virou um turno
+   com erro e o crédito foi devolvido. Sem `turnId`, nada foi cobrado (401, 402 sem crédito,
+   404, 409 com outra pergunta em andamento ou com o limite de 20).
+   A resposta e os artigos ficam em `search_turns` e `sources`; o front lê de lá.
+
+## Migrations
+- `0001_init.sql`: profiles, invites, searches, sources, RLS, `debit_credit`.
+- `0002_sources_citation.sql`: volume, número e páginas nas fontes (Vancouver).
+- `0003_conversations.sql`: `search_turns` (cada pergunta da conversa), `saved_articles`,
+  `refund_credit`, créditos 999; converte cada pesquisa antiga no turno 1.
+- `0004_drop_legacy_search_columns.sql`: tira de `searches` as colunas que foram para os
+  turnos. Aplicar só depois da função nova publicada.
+
+Teste local das migrations (Postgres descartável, sem Docker):
+```
+PGHOST=127.0.0.1 PGPORT=55432 PGUSER=postgres supabase/tests/run.sh
+```
 
 ## Teste rápido por curl (depois do deploy)
 ```

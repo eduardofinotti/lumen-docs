@@ -158,16 +158,12 @@ Deno.serve(async (req) => {
     turnId = id;
     markFailed = async (reason) => {
       await admin.from("search_turns").update({ status: "error", error: reason }).eq("id", id);
-      if (position === 1) await admin.from("searches").update({ status: "error", error: reason }).eq("id", sid);
       await refund();
     };
-    /** Grava o turno e marca a atividade da conversa (e as colunas antigas de `searches`, até a 0004). */
+    /** Grava o turno e marca a atividade da conversa. */
     const saveTurn = async (fields: { status: string; answer_md?: string; pubmed_query: string | null }) => {
       await admin.from("search_turns").update(fields).eq("id", id);
-      const legacy = position === 1
-        ? { status: fields.status, answer_md: fields.answer_md ?? null, pubmed_query: fields.pubmed_query }
-        : {};
-      await admin.from("searches").update({ updated_at: new Date().toISOString(), ...legacy }).eq("id", sid);
+      await admin.from("searches").update({ updated_at: new Date().toISOString() }).eq("id", sid);
     };
 
     const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
