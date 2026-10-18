@@ -1,6 +1,12 @@
 import { ArticleCard } from "@/components/articles/article-card";
 import type { Turn } from "@/types/search";
 
+/** Estado de "salvo" dos artigos: a pesquisa de origem e os PMIDs já salvos pelo médico. */
+export interface SaveContext {
+  searchId: string;
+  pmids: ReadonlySet<string>;
+}
+
 /** Âncora do card [n] de uma resposta no painel do desktop. */
 export function anchorFor(turn: Turn, n: number): string {
   return `artigo-${turn.position}-${n}`;
@@ -14,10 +20,12 @@ export function SourcesList({
   turn,
   highlighted,
   variant,
+  save,
 }: {
   turn: Turn;
   highlighted: number | null;
   variant: "panel" | "inline";
+  save: SaveContext;
 }) {
   return (
     <ol className="space-y-4">
@@ -29,6 +37,7 @@ export function SourcesList({
             highlighted={highlighted === i + 1}
             anchorId={variant === "panel" ? anchorFor(turn, i + 1) : null}
             anchorKey={`${turn.position}-${i + 1}`}
+            save={{ searchId: save.searchId, saved: save.pmids.has(article.pmid) }}
           />
         </li>
       ))}
@@ -41,10 +50,12 @@ export function SourcesPanel({
   turn,
   turnNumber,
   highlighted,
+  save,
 }: {
   turn: Turn | null;
   turnNumber: number;
   highlighted: number | null;
+  save: SaveContext;
 }) {
   return (
     <aside aria-labelledby="artigos" className="sticky top-20 hidden max-h-[calc(100dvh-6rem)] overflow-y-auto pb-6 lg:block">
@@ -53,7 +64,14 @@ export function SourcesPanel({
       </h2>
       <div className="mt-4">
         {turn && turn.sources.length > 0 ? (
-          <SourcesList turn={turn} highlighted={highlighted} variant="panel" />
+          <SourcesList
+            // Remonta ao trocar de resposta: o marcador de salvar começa do estado do servidor.
+            key={turn.id}
+            turn={turn}
+            highlighted={highlighted}
+            variant="panel"
+            save={save}
+          />
         ) : (
           <p className="text-body-sm text-ink-secondary">Esta resposta não citou artigos.</p>
         )}

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { buildCopyText } from "@/lib/vancouver";
 import type { Turn } from "@/types/search";
-import { anchorFor, SourcesList } from "./sources-panel";
+import { anchorFor, SourcesList, type SaveContext } from "./sources-panel";
 
 /** Balão com a pergunta do médico; numa continuação, mostra também como o Lúmen a entendeu. */
 export function QuestionBubble({ question, understood }: { question: string; understood?: string | null }) {
@@ -29,6 +29,7 @@ export function TurnBlock({
   selected,
   highlighted,
   retrying,
+  save,
   onSelect,
   onHighlight,
   onCite,
@@ -40,6 +41,7 @@ export function TurnBlock({
   selected: boolean;
   highlighted: number | null;
   retrying: boolean;
+  save: SaveContext;
   onSelect: () => void;
   onHighlight: (n: number | null) => void;
   onCite: (n: number) => void;
@@ -96,7 +98,7 @@ export function TurnBlock({
                 {count === 1 ? "1 artigo citado" : `${count} artigos citados`}
               </summary>
               <div className="px-2 pb-2">
-                <SourcesList turn={turn} highlighted={selected ? highlighted : null} variant="inline" />
+                <SourcesList turn={turn} highlighted={selected ? highlighted : null} variant="inline" save={save} />
               </div>
             </details>
           )}

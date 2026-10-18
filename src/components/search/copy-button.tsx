@@ -4,7 +4,7 @@ import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, label = "Copiar com referências" }: { text: string; label?: string }) {
   const [status, setStatus] = useState<"idle" | "copiado" | "erro">("idle");
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function CopyButton({ text }: { text: string }) {
     <div className="flex items-center gap-3">
       <Button variant="secondary" size="sm" onClick={copy}>
         {status === "copiado" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-        {status === "copiado" ? "Copiado" : "Copiar com referências"}
+        {status === "copiado" ? "Copiado" : label}
       </Button>
       <span role="status" className="text-body-sm text-danger">
         {status === "erro" && "Não foi possível copiar. Selecione o texto e copie manualmente."}

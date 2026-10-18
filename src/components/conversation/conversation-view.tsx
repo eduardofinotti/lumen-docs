@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { continueSearch, retryTurn } from "@/app/(app)/pesquisa/actions";
 import { FOLLOW_UP_STEPS, SearchProgress } from "@/components/search/search-progress";
 import { dateRangeLabel } from "@/lib/date-range";
@@ -23,9 +23,17 @@ function lastAnswered(turns: Turn[]): Turn | null {
  * Conversa (layout B): perguntas e respostas numa coluna; no desktop, o painel direito
  * mostra os artigos da resposta selecionada. No celular, os artigos ficam abaixo de cada resposta.
  */
-export function ConversationView({ conversation }: { conversation: Conversation }) {
+export function ConversationView({
+  conversation,
+  savedPmids,
+}: {
+  conversation: Conversation;
+  /** PMIDs que o médico já salvou. */
+  savedPmids: string[];
+}) {
   const router = useRouter();
   const { turns } = conversation;
+  const save = useMemo(() => ({ searchId: conversation.id, pmids: new Set(savedPmids) }), [conversation.id, savedPmids]);
   const [selectedId, setSelectedId] = useState<string | null>(() => lastAnswered(turns)?.id ?? null);
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -138,6 +146,7 @@ export function ConversationView({ conversation }: { conversation: Conversation 
                   selected={turn.id === selectedId}
                   highlighted={turn.id === selectedId ? highlighted : null}
                   retrying={busy}
+                  save={save}
                   onSelect={() => setSelectedId(turn.id)}
                   onHighlight={setHighlighted}
                   onCite={(n) => cite(turn, n)}
@@ -165,6 +174,7 @@ export function ConversationView({ conversation }: { conversation: Conversation 
           turn={selected}
           turnNumber={selected ? turns.indexOf(selected) + 1 : 0}
           highlighted={highlighted}
+          save={save}
         />
       </div>
     </div>

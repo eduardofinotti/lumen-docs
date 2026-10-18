@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { History, House, LogOut, PanelLeftClose, Plus, UserRound } from "lucide-react";
+import { Bookmark, History, House, LogOut, PanelLeftClose, Plus, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { signOut } from "@/app/(auth)/actions";
 import { Logo } from "@/components/brand/logo";
@@ -74,6 +74,7 @@ export function Sidebar({
       <nav aria-label="Navegação principal" className="mt-4 space-y-1 px-3">
         <NavItem href="/pesquisa" icon={House} label="Início" active={pathname === "/pesquisa"} />
         <NavItem href="/historico" icon={History} label="Histórico" active={pathname === "/historico"} />
+        <NavItem href="/salvos" icon={Bookmark} label="Artigos salvos" active={pathname === "/salvos"} />
       </nav>
 
       <div className="mt-6 min-h-0 flex-1 overflow-y-auto px-3 pb-4">

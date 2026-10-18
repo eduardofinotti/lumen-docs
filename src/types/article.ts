@@ -37,3 +37,12 @@ export interface Article {
   evidence: EvidenceLevel;
   summary?: ArticleSummary;
 }
+
+/** Artigo na lista de salvos do médico. */
+export interface SavedArticle extends Article {
+  savedAt: string;
+  /** Pesquisa de onde o artigo veio; null se ela foi apagada. */
+  searchId: string | null;
+  /** Primeira pergunta dessa pesquisa. */
+  question: string | null;
+}

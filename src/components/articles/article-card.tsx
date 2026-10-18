@@ -1,8 +1,16 @@
 import { ChevronDown, ExternalLink } from "lucide-react";
-import { formatAuthors, pubmedUrl } from "@/lib/evidence";
+import { fullTextUrl } from "@/lib/article-links";
+import { formatAuthors } from "@/lib/evidence";
 import { cn } from "@/lib/utils";
 import type { Article, ArticleSummary } from "@/types/article";
 import { EvidenceBadge } from "./evidence-badge";
+import { SaveButton } from "./save-button";
+
+const linkLabels = {
+  "PubMed Central": "Ler o texto completo (PubMed Central)",
+  Revista: "Ver na revista",
+  PubMed: "Ver no PubMed",
+} as const;
 
 const summaryLabels: [keyof ArticleSummary, string][] = [
   ["pergunta", "Pergunta"],
@@ -34,13 +42,15 @@ function ArticleSummaryDetails({ summary }: { summary: ArticleSummary }) {
   );
 }
 
-/** Card de artigo: título, metadados, etiqueta de evidência, PMID e link para o PubMed. */
+/** Card de artigo: título, metadados, etiqueta de evidência, PMID e link para o texto completo. */
 export function ArticleCard({
   article,
   index,
   highlighted = false,
   anchorId = `artigo-${index}`,
   anchorKey,
+  save,
+  footer,
   className,
 }: {
   article: Article;
@@ -50,8 +60,13 @@ export function ArticleCard({
   anchorId?: string | null;
   /** Marca o card para a conversa achar o visível ao clicar numa citação. */
   anchorKey?: string;
+  /** Mostra o marcador de salvar; `searchId` é a pesquisa de onde o artigo veio. */
+  save?: { searchId: string | null; saved: boolean };
+  /** Ações extras abaixo do link (página de salvos). */
+  footer?: React.ReactNode;
   className?: string;
 }) {
+  const link = fullTextUrl(article);
   return (
     <article
       id={anchorId ?? undefined}
@@ -67,7 +82,10 @@ export function ArticleCard({
           [{index}]
         </span>
         <div className="min-w-0 flex-1 space-y-3">
-          <h3 className="text-title text-ink">{article.title}</h3>
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-title text-ink">{article.title}</h3>
+            {save && <SaveButton pmid={article.pmid} searchId={save.searchId} initialSaved={save.saved} />}
+          </div>
           <p className="text-body-sm text-ink-secondary">
             {formatAuthors(article.authors)} {article.journal}. {article.year && `${article.year}. `}Fonte:{" "}
             {article.source}.
@@ -78,15 +96,16 @@ export function ArticleCard({
           </div>
           {article.summary && <ArticleSummaryDetails summary={article.summary} />}
           <a
-            href={pubmedUrl(article.pmid)}
+            href={link.href}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-sm text-body-sm font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
           >
-            Ver no PubMed
+            {linkLabels[link.label]}
             <ExternalLink className="size-3.5 stroke-[1.5] text-ink-secondary" aria-hidden="true" />
             <span className="sr-only">(abre em nova aba)</span>
           </a>
+          {footer}
         </div>
       </div>
     </article>
