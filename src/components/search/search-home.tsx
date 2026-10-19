@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { startSearch } from "@/app/(app)/pesquisa/actions";
 import { LogoMark } from "@/components/brand/logo";
+import { InstallTip } from "@/components/pwa/install-tip";
 import { DEFAULT_DATE_RANGE } from "@/lib/date-range";
 import { validateQuestion } from "@/lib/question";
 import type { DateRange } from "@/types/search";
@@ -103,6 +104,10 @@ export function SearchHome({
             run(q);
           }}
         />
+      </div>
+
+      <div className="mt-10">
+        <InstallTip />
       </div>
     </div>
   );

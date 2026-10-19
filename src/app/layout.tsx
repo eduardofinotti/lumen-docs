@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { PwaSetup } from "@/components/pwa/pwa-setup";
 import { ThemeScript } from "@/components/theme/theme-script";
 import "./globals.css";
 
@@ -31,6 +32,19 @@ export const metadata: Metadata = {
   },
   description:
     "Pergunte como falaria com um colega e receba a resposta com os artigos reais que a sustentam.",
+  applicationName: "Lúmen",
+  // Instalado na tela inicial do iPhone: abre sem a barra do Safari, com o nome curto.
+  appleWebApp: { capable: true, title: "Lúmen", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#fafaf8",
+  // Android: o teclado encolhe a página, e a caixa de pergunta fica visível acima dele.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
@@ -47,7 +61,10 @@ export default function RootLayout({
       <head>
         <ThemeScript />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <PwaSetup />
+      </body>
     </html>
   );
 }

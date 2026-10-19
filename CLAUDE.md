@@ -33,6 +33,10 @@ Entorno
 10. Artigos salvos: lista única (/salvos), com referência Vancouver para copiar
     e link para o texto completo (PubMed Central, revista ou PubMed).
 11. Baixar uma resposta em PDF (/imprimir/[turnId], "Salvar como PDF" do navegador).
+12. Pensado para o celular (onde mais se usa): alvos de toque de 44px, campos com 16px
+    (sem zoom no iPhone). Instalável como app (PWA): `app/manifest.ts`, ícones em
+    `public/icons/`, `public/sw.js` (só a tela /offline; não guarda dados do médico) e
+    a seção "Usar como app" em /conta.
 Regras fixas da síntese: nunca dar conduta; sempre terminar lembrando que a
 decisão clínica é do médico; só citar PMIDs recebidos da busca.
 Próxima etapa: Semantic Scholar e arXiv.
