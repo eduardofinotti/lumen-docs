@@ -1,3 +1,4 @@
+import { Comparison } from "@/components/marketing/comparison";
 import { Hero } from "@/components/marketing/hero";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { PrivacyNotice } from "@/components/marketing/privacy-notice";
@@ -9,6 +10,7 @@ export default function LandingPage() {
     <>
       <Hero />
       <HowItWorks />
+      <Comparison />
       <Trust />
       <Sources />
       <PrivacyNotice />
