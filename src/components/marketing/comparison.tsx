@@ -1,4 +1,7 @@
+import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
 import { Container } from "@/components/layout/container";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SectionHeading } from "./section-heading";
 
@@ -73,10 +76,10 @@ export function Comparison() {
                     scope="col"
                     className={cn(
                       "px-5 pb-4 align-bottom text-body-sm font-medium text-ink-secondary",
-                      i === LUMEN && "rounded-t-2xl border-x border-t border-line bg-surface-raised pt-5 text-ink",
+                      i === LUMEN && "rounded-t-2xl border-x border-t border-lumen/40 bg-lumen-tint pt-5 text-ink",
                     )}
                   >
-                    {option}
+                    {i === LUMEN ? <Logo size="sm" /> : option}
                   </th>
                 ))}
               </tr>
@@ -92,8 +95,8 @@ export function Comparison() {
                       key={i}
                       className={cn(
                         "border-t border-line px-5 py-5 align-top text-body-sm text-ink-secondary",
-                        i === LUMEN && "border-x bg-surface-raised text-ink",
-                        i === LUMEN && r === rows.length - 1 && "rounded-b-2xl border-b",
+                        i === LUMEN && "border-x border-x-lumen/40 border-t-lumen/15 bg-lumen-tint font-medium text-ink",
+                        i === LUMEN && r === rows.length - 1 && "rounded-b-2xl border-b border-b-lumen/40",
                       )}
                     >
                       {answer}
@@ -114,18 +117,25 @@ export function Comparison() {
                 {row.answers.map((answer, i) => (
                   <div
                     key={options[i]}
-                    className={cn(i === LUMEN && "-mx-2 rounded-xl bg-surface-raised p-2")}
+                    className={cn(i === LUMEN && "-mx-2 rounded-xl border border-lumen/40 bg-lumen-tint p-3")}
                   >
                     <dt className={cn("text-body-sm", i === LUMEN ? "font-medium text-ink" : "text-ink-secondary")}>
-                      {options[i]}
+                      {i === LUMEN ? <Logo size="sm" /> : options[i]}
                     </dt>
-                    <dd className={cn("text-body-sm", i === LUMEN ? "text-ink" : "text-ink-secondary")}>{answer}</dd>
+                    <dd className={cn("text-body-sm", i === LUMEN ? "mt-1 font-medium text-ink" : "text-ink-secondary")}>{answer}</dd>
                   </div>
                 ))}
               </dl>
             </li>
           ))}
         </ul>
+
+        <div className="mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <Button asChild>
+            <Link href="/cadastro">Criar conta</Link>
+          </Button>
+          <p className="text-body-sm text-ink-secondary">Acesso por convite nesta fase inicial.</p>
+        </div>
       </Container>
     </section>
   );
