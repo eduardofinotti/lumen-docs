@@ -10,6 +10,10 @@ export interface Profile {
   crmUf: string | null;
   credits: number;
   createdAt: string;
+  /** Superadmin: vê o painel /admin. */
+  isAdmin: boolean;
+  /** Acesso suspenso pelo admin. */
+  blockedAt: string | null;
 }
 
 /** Conteúdo do cookie de sessão do modo demonstração. */

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, History, House, LogOut, PanelLeftClose, Plus, UserRound } from "lucide-react";
+import { Bookmark, History, House, LogOut, PanelLeftClose, Plus, ShieldCheck, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { signOut } from "@/app/(auth)/actions";
 import { Logo } from "@/components/brand/logo";
@@ -108,6 +108,9 @@ export function Sidebar({
 
       <div className="space-y-1 border-t border-line p-3">
         <NavItem href="/conta" icon={UserRound} label={user.fullName || "Minha conta"} active={pathname === "/conta"} />
+        {user.isAdmin && (
+          <NavItem href="/admin" icon={ShieldCheck} label="Administração" active={pathname === "/admin"} />
+        )}
         <form action={signOut}>
           <button type="submit" className={itemClass}>
             <LogOut className="size-4 stroke-[1.5] text-ink-secondary" aria-hidden="true" />

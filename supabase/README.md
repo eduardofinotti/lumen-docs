@@ -46,6 +46,9 @@
   turnos. Aplicar só depois da função nova publicada.
 - `0005_reusable_invite_code.sql`: código de convite reutilizável (`reusable`, conta os usos
   em `uses`). Encerrar: `update invites set reusable = false, used_at = now() where code = '...'`.
+- `0006_admin.sql`: `profiles.is_admin` e `blocked_at`; funções `admin_*` do painel /admin
+  (conferem o admin no banco); bloqueado não gasta crédito. Novo admin:
+  `update profiles set is_admin = true where id = (select id from auth.users where email = '...')`.
 
 Teste local das migrations (Postgres descartável, sem Docker):
 ```

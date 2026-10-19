@@ -25,6 +25,9 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
       crmUf: session.crmUf ?? null,
       credits: DEMO_CREDITS,
       createdAt: new Date().toISOString(),
+      // No modo demonstração o painel /admin mostra dados fictícios.
+      isAdmin: true,
+      blockedAt: null,
     };
   }
 
@@ -35,7 +38,7 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
 
   const { data } = await supabase
     .from("profiles")
-    .select("full_name, specialty, crm, crm_uf, credits, created_at")
+    .select("full_name, specialty, crm, crm_uf, credits, created_at, is_admin, blocked_at")
     .eq("id", user.id)
     .maybeSingle<{
       full_name: string | null;
@@ -44,6 +47,8 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
       crm_uf: string | null;
       credits: number;
       created_at: string;
+      is_admin: boolean;
+      blocked_at: string | null;
     }>();
 
   return {
@@ -55,5 +60,7 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
     crmUf: data?.crm_uf ?? null,
     credits: data?.credits ?? 0,
     createdAt: data?.created_at ?? user.created_at,
+    isAdmin: data?.is_admin ?? false,
+    blockedAt: data?.blocked_at ?? null,
   };
 });

@@ -13,6 +13,7 @@ const DESKTOP_QUERY = "(min-width: 64rem)";
 export interface ShellUser {
   fullName: string;
   credits: number;
+  isAdmin: boolean;
 }
 
 /**

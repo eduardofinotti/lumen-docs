@@ -37,6 +37,10 @@ Entorno
     (sem zoom no iPhone). Instalável como app (PWA): `app/manifest.ts`, ícones em
     `public/icons/` e `app/apple-icon.png`, `public/sw.js` (só a tela /offline; não guarda dados do médico) e
     a seção "Usar como app" em /conta.
+13. Superadmin (/admin, item "Administração" na sidebar só para `profiles.is_admin`):
+    dados de uso (só números, nunca o texto das perguntas), usuários (créditos,
+    suspender acesso) e códigos de acesso (uso único ou reutilizável, convite por
+    e-mail). Tudo passa pelas funções `admin_*` do banco, que conferem o admin.
 Regras fixas da síntese: nunca dar conduta; sempre terminar lembrando que a
 decisão clínica é do médico; só citar PMIDs recebidos da busca.
 Próxima etapa: Semantic Scholar e arXiv.
@@ -81,6 +85,7 @@ src/app/(app)/pesquisa/[id]/page.tsx  resultado de uma pesquisa
 src/app/(app)/historico/page.tsx      histórico do usuário
 src/app/(app)/conta/page.tsx          perfil e créditos
 src/app/(app)/salvos/page.tsx         artigos salvos
+src/app/(app)/admin/page.tsx          superadmin (404 para quem não é admin)
 src/app/(print)/imprimir/[turnId]/    PDF de uma resposta (sem o shell do app)
 src/components/                       componentes por domínio
 src/lib/supabase/{client,server,middleware}.ts
@@ -178,4 +183,3 @@ prompts). Leia `supabase/README.md`. Ao ligar o front:
 ## Fora de escopo agora (não fazer)
 - Semantic Scholar e arXiv
 - Pagamento e compra de créditos
-- Painel admin

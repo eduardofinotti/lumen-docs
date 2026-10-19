@@ -7,12 +7,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const profile = await getCurrentProfile();
   // O middleware já protege estas rotas; isto cobre sessão expirada entre as duas checagens.
   if (!profile) redirect("/entrar");
+  if (profile.blockedAt) redirect("/acesso-suspenso");
 
   const recent = await listConversations(20);
 
   return (
     <AppShell
-      user={{ fullName: profile.fullName, credits: profile.credits }}
+      user={{ fullName: profile.fullName, credits: profile.credits, isAdmin: profile.isAdmin }}
       recent={recent}
     >
       {children}

@@ -7,7 +7,7 @@ import {
   demoCookieOptions,
   encodeDemoSession,
 } from "@/lib/auth/demo-session";
-import { authErrorMessage, INVITE_ONLY_MESSAGE } from "@/lib/auth/errors";
+import { authErrorMessage, BLOCKED_MESSAGE, INVITE_ONLY_MESSAGE } from "@/lib/auth/errors";
 import { HOME_AFTER_LOGIN, safeNextPath } from "@/lib/auth/routes";
 import {
   compactErrors,
@@ -62,8 +62,18 @@ export async function signIn(
     redirect(next);
   }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { status: "error", message: authErrorMessage(error), values: { email } };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("blocked_at")
+    .eq("id", data.user.id)
+    .maybeSingle<{ blocked_at: string | null }>();
+  if (profile?.blocked_at) {
+    await supabase.auth.signOut();
+    return { status: "error", message: BLOCKED_MESSAGE, values: { email } };
+  }
 
   redirect(next);
 }

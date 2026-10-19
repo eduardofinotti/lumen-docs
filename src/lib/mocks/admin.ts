@@ -1,0 +1,125 @@
+import type { AdminInvite, AdminOverview, AdminUser } from "@/types/admin";
+
+/** Painel /admin no modo demonstração (sem Supabase). Números fictícios. */
+
+const DAY = 86_400_000;
+const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
+
+export const demoAdminOverview: AdminOverview = {
+  usersTotal: 4,
+  usersNew7d: 2,
+  usersNew30d: 4,
+  usersActive7d: 3,
+  usersBlocked: 1,
+  conversations: 18,
+  questions: 41,
+  questions7d: 12,
+  statusDone: 35,
+  statusNoEvidence: 4,
+  statusError: 2,
+  savedArticles: 9,
+  specialties: [
+    { specialty: "endocrinologia", total: 2 },
+    { specialty: "cardiologia", total: 1 },
+    { specialty: "", total: 1 },
+  ],
+  daily: Array.from({ length: 30 }, (_, i) => ({
+    day: ago(29 - i).slice(0, 10),
+    total: [0, 1, 0, 2, 3, 1, 0][i % 7] + (i > 22 ? 1 : 0),
+  })),
+};
+
+export const demoAdminUsers: AdminUser[] = [
+  {
+    id: "demo",
+    email: "medico@lumen.test",
+    fullName: "Médico de demonstração",
+    specialty: "endocrinologia",
+    crm: "123456",
+    crmUf: "SP",
+    credits: 999,
+    isAdmin: true,
+    blockedAt: null,
+    createdAt: ago(30),
+    lastActiveAt: ago(0),
+    questions: 22,
+  },
+  {
+    id: "demo-2",
+    email: "ana.prado@clinica.com",
+    fullName: "Ana Lúcia Prado",
+    specialty: "cardiologia",
+    crm: null,
+    crmUf: null,
+    credits: 980,
+    isAdmin: false,
+    blockedAt: null,
+    createdAt: ago(5),
+    lastActiveAt: ago(1),
+    questions: 15,
+  },
+  {
+    id: "demo-3",
+    email: "bruno.costa@gmail.com",
+    fullName: "Bruno Costa",
+    specialty: "endocrinologia",
+    crm: "98765",
+    crmUf: "MG",
+    credits: 995,
+    isAdmin: false,
+    blockedAt: ago(2),
+    createdAt: ago(3),
+    lastActiveAt: ago(3),
+    questions: 4,
+  },
+  {
+    id: "demo-4",
+    email: "carla@exemplo.com",
+    fullName: "Carla Mendes",
+    specialty: null,
+    crm: null,
+    crmUf: null,
+    credits: 999,
+    isAdmin: false,
+    blockedAt: null,
+    createdAt: ago(20),
+    lastActiveAt: null,
+    questions: 0,
+  },
+];
+
+export const demoAdminInvites: AdminInvite[] = [
+  {
+    id: "inv-1",
+    email: null,
+    code: "LUMEN-DEMO",
+    reusable: true,
+    uses: 3,
+    usedAt: null,
+    usedByEmail: null,
+    invitedBy: "Médico de demonstração",
+    createdAt: ago(30),
+  },
+  {
+    id: "inv-2",
+    email: "carla@exemplo.com",
+    code: null,
+    reusable: false,
+    uses: 1,
+    usedAt: ago(20),
+    usedByEmail: "carla@exemplo.com",
+    invitedBy: "Médico de demonstração",
+    createdAt: ago(21),
+  },
+  {
+    id: "inv-3",
+    email: "novo@exemplo.com",
+    code: null,
+    reusable: false,
+    uses: 0,
+    usedAt: null,
+    usedByEmail: null,
+    invitedBy: "Médico de demonstração",
+    createdAt: ago(1),
+  },
+];

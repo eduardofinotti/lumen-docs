@@ -2,6 +2,7 @@ import type { AuthError } from "@supabase/supabase-js";
 
 /** Mensagem do cadastro quando não há convite (pré-checagem ou recusa do trigger). */
 export const INVITE_ONLY_MESSAGE = "Cadastro por convite. Fale com a mentoria.";
+export const BLOCKED_MESSAGE = "Seu acesso está suspenso. Fale com a mentoria.";
 
 /** Traduz erros do Supabase Auth para mensagens que dizem o que fazer. */
 export function authErrorMessage(error: AuthError): string {

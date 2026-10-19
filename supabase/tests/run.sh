@@ -15,3 +15,5 @@ run tests/0003_conversations.sql
 run migrations/0004_drop_legacy_search_columns.sql
 run migrations/0005_reusable_invite_code.sql
 run tests/0005_invites.sql
+run migrations/0006_admin.sql
+run tests/0006_admin.sql

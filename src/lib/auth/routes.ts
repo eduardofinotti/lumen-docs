@@ -1,5 +1,5 @@
 /** Rotas do grupo (app): exigem sessão. */
-export const PROTECTED_PREFIXES = ["/pesquisa", "/historico", "/conta", "/imprimir", "/salvos"];
+export const PROTECTED_PREFIXES = ["/pesquisa", "/historico", "/conta", "/imprimir", "/salvos", "/admin"];
 
 /** Telas de entrada: quem já tem sessão vai direto para a pesquisa. */
 export const GUEST_ONLY_PREFIXES = ["/entrar", "/cadastro"];
