@@ -14,7 +14,7 @@ import type { ShellUser } from "./app-shell";
 const RECENT_LIMIT = 8;
 
 const itemClass =
-  "flex h-10 w-full items-center gap-3 rounded-md px-3 text-body-sm text-ink hover:bg-surface-sunken";
+  "flex h-10 w-full items-center gap-3 rounded-md px-3 text-body-sm text-ink hover:bg-surface-sunken active:bg-surface-sunken pointer-coarse:h-11";
 
 function NavItem({
   href,
@@ -93,7 +93,7 @@ export function Sidebar({
                     aria-current={active ? "page" : undefined}
                     title={s.question}
                     className={cn(
-                      "block truncate rounded-md px-3 py-2 text-body-sm text-ink-secondary hover:bg-surface-sunken hover:text-ink",
+                      "block truncate rounded-md px-3 py-2 text-body-sm pointer-coarse:py-3 text-ink-secondary hover:bg-surface-sunken hover:text-ink",
                       active && "bg-surface-sunken text-ink",
                     )}
                   >

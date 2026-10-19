@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/app/(auth)/actions";
 import { ProfileForm } from "@/components/account/profile-form";
 import { ThemeToggle } from "@/components/account/theme-toggle";
+import { InstallApp } from "@/components/pwa/install-app";
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { formatDate } from "@/lib/format";
@@ -11,8 +12,8 @@ export const metadata: Metadata = { title: "Minha conta" };
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <section aria-labelledby={id} className="rounded-lg border border-line bg-surface-raised p-6">
-      <h2 id={id} className="label-caps">
+    <section aria-labelledby={id} className="rounded-lg border border-line bg-surface-raised p-4 sm:p-6">
+      <h2 id={id} className="label-caps scroll-mt-24">
         {title}
       </h2>
       <div className="mt-4">{children}</div>
@@ -49,6 +50,10 @@ export default async function ContaPage() {
 
         <Section id="dados" title="Dados cadastrais">
           <ProfileForm profile={profile} />
+        </Section>
+
+        <Section id="app" title="Usar como app">
+          <InstallApp />
         </Section>
 
         <Section id="aparencia" title="Aparência">

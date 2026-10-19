@@ -49,13 +49,14 @@ export function QuestionBox({
           }}
           placeholder="Ex.: Em gestantes com colo curto, a progesterona vaginal reduz o parto prematuro?"
           rows={3}
+          enterKeyHint="search"
           maxLength={MAX_QUESTION_LENGTH}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? "pergunta-erro" : undefined}
           className="block max-h-60 min-h-24 w-full resize-none bg-transparent px-4 pt-4 text-body text-ink outline-none [field-sizing:content] placeholder:text-ink-muted focus-visible:shadow-none sm:px-6 sm:pt-6"
         />
         <div className="flex items-center justify-between gap-3 px-4 pt-2 pb-4 sm:px-6 sm:pb-6">
-          <div className="w-44">
+          <div className="w-44 min-w-0">
             <label htmlFor="periodo" className="sr-only">
               Período de publicação
             </label>
@@ -63,7 +64,7 @@ export function QuestionBox({
               id="periodo"
               value={dateRange}
               onChange={(e) => isDateRange(e.target.value) && onDateRangeChange(e.target.value)}
-              className="h-9 text-body-sm"
+              className="h-9 text-body-sm pointer-coarse:h-11 pointer-coarse:text-body"
             >
               {dateRanges.map((r) => (
                 <option key={r.id} value={r.id}>

@@ -195,6 +195,11 @@
   }
   html {
     @apply font-sans;
+    /* Toque no celular: sem o retângulo azul do navegador (os botões têm o próprio retorno). */
+    -webkit-tap-highlight-color: transparent;
+    /* iPhone deitado: o texto não aumenta sozinho. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   body {
     @apply bg-surface text-ink text-body antialiased;

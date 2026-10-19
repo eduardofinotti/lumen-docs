@@ -32,7 +32,7 @@ export function Citation({
       onMouseLeave={onHighlight && (() => onHighlight(null))}
       onFocus={onHighlight && (() => onHighlight(n))}
       onBlur={onHighlight && (() => onHighlight(null))}
-      className={cn("rounded-sm font-medium text-lumen no-underline", className)}
+      className={cn("rounded-sm font-medium text-lumen no-underline pointer-coarse:px-0.5 pointer-coarse:py-2.5", className)}
       aria-label={`Referência ${n}`}
     >
       [{n}]

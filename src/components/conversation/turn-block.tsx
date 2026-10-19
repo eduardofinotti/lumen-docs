@@ -1,6 +1,6 @@
 "use client";
 
-import { FileDown } from "lucide-react";
+import { ChevronDown, FileDown } from "lucide-react";
 import { Answer } from "@/components/search/answer";
 import { CopyButton } from "@/components/search/copy-button";
 import { SearchStatusMessage } from "@/components/search/search-status-message";
@@ -55,7 +55,10 @@ export function TurnBlock({
       aria-label={`Pergunta ${turn.position}`}
       className="scroll-mt-20 space-y-5"
     >
-      <QuestionBubble question={turn.question} understood={turn.standaloneQuestion} />
+      {/* A primeira pergunta já é o título da página: no celular, não repete. */}
+      <div className={cn(turn.position === 1 && "max-lg:hidden")}>
+        <QuestionBubble question={turn.question} understood={turn.standaloneQuestion} />
+      </div>
 
       {turn.status === "done" ? (
         // Clicar na resposta mostra os artigos dela no painel (desktop).
@@ -93,11 +96,15 @@ export function TurnBlock({
           </div>
 
           {count > 0 && (
-            <details className="mt-6 rounded-lg border border-line lg:hidden" data-turn-sources={turn.position}>
-              <summary className="cursor-pointer list-none px-4 py-3 text-body-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
-                {count === 1 ? "1 artigo citado" : `${count} artigos citados`}
+            <details className="group mt-6 lg:hidden" data-turn-sources={turn.position}>
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-line bg-surface-raised px-4 text-body-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
+                {count === 1 ? "Ver o artigo citado" : `Ver os ${count} artigos citados`}
+                <ChevronDown
+                  className="size-4 stroke-[1.5] text-ink-secondary transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                />
               </summary>
-              <div className="px-2 pb-2">
+              <div className="mt-3">
                 <SourcesList turn={turn} highlighted={selected ? highlighted : null} variant="inline" save={save} />
               </div>
             </details>

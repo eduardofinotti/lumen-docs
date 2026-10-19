@@ -39,14 +39,14 @@ export function SaveButton({
 
   const Icon = saved ? BookmarkCheck : Bookmark;
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1">
+    <div className="flex shrink-0 flex-col items-start gap-1">
       <button
         type="button"
         onClick={toggle}
         disabled={pending}
         aria-pressed={saved}
         className={cn(
-          "focus-ring inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-body-sm transition-colors",
+          "focus-ring inline-flex h-9 items-center pointer-coarse:h-11 gap-1.5 rounded-md border px-2.5 text-body-sm transition-colors",
           saved
             ? "border-line-strong bg-surface-sunken font-medium text-ink"
             : "border-line text-ink-secondary hover:border-line-strong hover:text-ink",
@@ -56,7 +56,7 @@ export function SaveButton({
         {saved ? "Salvo" : "Salvar"}
       </button>
       {error && (
-        <p role="alert" className="max-w-40 text-right text-body-sm text-danger">
+        <p role="alert" className="text-body-sm text-danger">
           {error}
         </p>
       )}
