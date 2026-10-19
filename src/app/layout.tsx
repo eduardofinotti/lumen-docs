@@ -35,7 +35,6 @@ export const metadata: Metadata = {
   applicationName: "Lúmen",
   // Instalado na tela inicial do iPhone: abre sem a barra do Safari, com o nome curto.
   appleWebApp: { capable: true, title: "Lúmen", statusBarStyle: "default" },
-  icons: { apple: "/icons/apple-touch-icon.png" },
   formatDetection: { telephone: false },
 };
 

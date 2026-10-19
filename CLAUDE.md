@@ -35,7 +35,7 @@ Entorno
 11. Baixar uma resposta em PDF (/imprimir/[turnId], "Salvar como PDF" do navegador).
 12. Pensado para o celular (onde mais se usa): alvos de toque de 44px, campos com 16px
     (sem zoom no iPhone). Instalável como app (PWA): `app/manifest.ts`, ícones em
-    `public/icons/`, `public/sw.js` (só a tela /offline; não guarda dados do médico) e
+    `public/icons/` e `app/apple-icon.png`, `public/sw.js` (só a tela /offline; não guarda dados do médico) e
     a seção "Usar como app" em /conta.
 Regras fixas da síntese: nunca dar conduta; sempre terminar lembrando que a
 decisão clínica é do médico; só citar PMIDs recebidos da busca.
