@@ -44,6 +44,8 @@
   `refund_credit`, créditos 999; converte cada pesquisa antiga no turno 1.
 - `0004_drop_legacy_search_columns.sql`: tira de `searches` as colunas que foram para os
   turnos. Aplicar só depois da função nova publicada.
+- `0005_reusable_invite_code.sql`: código de convite reutilizável (`reusable`, conta os usos
+  em `uses`). Encerrar: `update invites set reusable = false, used_at = now() where code = '...'`.
 
 Teste local das migrations (Postgres descartável, sem Docker):
 ```
