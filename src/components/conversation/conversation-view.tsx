@@ -42,6 +42,15 @@ export function ConversationView({
   const [error, setError] = useState<string | null>(null);
   const scrollTo = useRef<string | null>(null);
 
+  // Ao abrir uma conversa com várias perguntas, começa na última (a mais recente), não no topo.
+  useEffect(() => {
+    const last = turns[turns.length - 1];
+    if (turns.length < 2 || window.location.hash) return;
+    document.getElementById(`resposta-${last.position}`)?.scrollIntoView({ block: "start" });
+    // Só na abertura: a conversa remonta ao trocar de pesquisa (key = id).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Depois que a resposta nova chega (router.refresh), seleciona-a e rola até ela.
   const lastId = turns[turns.length - 1]?.id;
   useEffect(() => {
