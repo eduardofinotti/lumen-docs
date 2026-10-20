@@ -226,3 +226,9 @@
     print-color-adjust: exact;
   }
 }
+
+/* Ondas do ditado quando o navegador não libera o áudio para medir o volume. */
+@keyframes dictation-wave {
+  0%, 100% { transform: scaleY(0.2); }
+  50% { transform: scaleY(0.9); }
+}

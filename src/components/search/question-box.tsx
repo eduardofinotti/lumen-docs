@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { dateRanges, isDateRange } from "@/lib/date-range";
 import { MAX_QUESTION_LENGTH } from "@/lib/question";
-import { DictationButton } from "./dictation-button";
+import { DictationButton, ListeningBar } from "./dictation-button";
+import { useDictation } from "./use-dictation";
 import type { DateRange } from "@/types/search";
 
 /** Caixa de pergunta: o elemento central da tela de pesquisa. */
@@ -26,10 +27,12 @@ export function QuestionBox({
   error: string | null;
 }) {
   const [dictationMessage, setDictationMessage] = useState<string | null>(null);
+  const dictation = useDictation({ value, onChange, onError: setDictationMessage });
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        dictation.stop();
         onSubmit();
       }}
       noValidate
@@ -47,6 +50,7 @@ export function QuestionBox({
             // Enter envia; Shift+Enter quebra a linha.
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
+              dictation.stop();
               onSubmit();
             }
           }}
@@ -58,6 +62,7 @@ export function QuestionBox({
           aria-describedby={error ? "pergunta-erro" : undefined}
           className="block max-h-60 min-h-24 w-full resize-none bg-transparent px-4 pt-4 text-body text-ink outline-none [field-sizing:content] placeholder:text-ink-muted focus-visible:shadow-none sm:px-6 sm:pt-6"
         />
+        <ListeningBar dictation={dictation} className="px-4 pt-2 sm:px-6" />
         <div className="flex items-center justify-between gap-3 px-4 pt-2 pb-4 sm:px-6 sm:pb-6">
           <div className="w-44 min-w-0">
             <label htmlFor="periodo" className="sr-only">
@@ -77,7 +82,7 @@ export function QuestionBox({
             </NativeSelect>
           </div>
           <div className="flex items-center gap-2">
-            <DictationButton value={value} onChange={onChange} onError={setDictationMessage} />
+            <DictationButton dictation={dictation} />
             <Button type="submit">
               <Search aria-hidden="true" />
               Pesquisar

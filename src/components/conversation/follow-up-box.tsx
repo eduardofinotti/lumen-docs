@@ -3,7 +3,8 @@
 import { ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { DictationButton } from "@/components/search/dictation-button";
+import { DictationButton, ListeningBar } from "@/components/search/dictation-button";
+import { useDictation } from "@/components/search/use-dictation";
 import { PatientBanner } from "@/components/search/patient-banner";
 import { Button } from "@/components/ui/button";
 import { MAX_QUESTION_LENGTH } from "@/lib/question";
@@ -25,9 +26,18 @@ export function FollowUpBox({
 }) {
   const [value, setValue] = useState("");
   const [dictationMessage, setDictationMessage] = useState<string | null>(null);
+  const dictation = useDictation({
+    value,
+    onChange: (v) => {
+      setValue(v);
+      onEdit();
+    },
+    onError: setDictationMessage,
+  });
 
   async function submit() {
     if (disabled) return;
+    dictation.stop();
     // No celular, fecha o teclado para o médico ver o andamento da resposta.
     if (window.matchMedia("(pointer: coarse)").matches && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -54,6 +64,7 @@ export function FollowUpBox({
           className="space-y-2"
         >
           <PatientBanner />
+          <ListeningBar dictation={dictation} className="px-1" />
           <div className="flex items-end gap-2 rounded-lg border border-line bg-surface-raised p-2 shadow-sm focus-within:border-line-strong focus-within:shadow-focus">
             <label htmlFor="continuacao" className="sr-only">
               Pergunta de continuação
@@ -81,16 +92,7 @@ export function FollowUpBox({
               aria-describedby={error ? "continuacao-erro" : undefined}
               className="block max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-body text-ink outline-none [field-sizing:content] placeholder:text-ink-muted focus-visible:shadow-none disabled:opacity-60"
             />
-            <DictationButton
-              value={value}
-              onChange={(v) => {
-                setValue(v);
-                onEdit();
-              }}
-              onError={setDictationMessage}
-              disabled={disabled}
-              size="small"
-            />
+            <DictationButton dictation={dictation} disabled={disabled} size="small" />
             <Button type="submit" size="icon-sm" disabled={disabled} aria-label="Enviar pergunta" className="pointer-coarse:size-10">
               <ArrowUp aria-hidden="true" />
             </Button>
