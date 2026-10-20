@@ -8,6 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
+import { isRetracted, splitConclusion, type EvidenceStrength } from "./answer.ts";
 import { buildHistory, isStalePending, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
 import { CONVERSATION_NOTE, SYSTEM_QUERY, SYSTEM_ROUTER, SYSTEM_SUMMARY, SYSTEM_SYNTHESIS } from "./prompts.ts";
 
@@ -52,6 +53,8 @@ type Article = {
   pmcid: string | null; doi: string | null;
   publicationTypes: string[]; abstract: string; url: string;
   evidenceLevel: "high" | "mid" | "low"; evidenceLabel: string;
+  /** Retratado no PubMed: aparece com aviso e não vale como evidência na síntese. */
+  retracted: boolean;
   /** Resumo em português já gerado (artigo que apareceu antes na conversa). */
   summaryPt?: string | null;
 };
@@ -66,6 +69,7 @@ type SourceRow = {
   volume: string | null; issue: string | null; pages: string | null; pmcid: string | null; doi: string | null;
   publication_types: string[] | null; evidence_level: string | null; evidence_label: string | null;
   abstract: string | null; summary_pt: string | null; url: string | null; position: number; turn_id: string;
+  retracted: boolean | null;
 };
 
 type Body = { question?: string; dateRange?: DateRange; searchId?: string; retryTurnId?: string };
@@ -173,7 +177,10 @@ Deno.serve(async (req) => {
       await refund();
     };
     /** Grava o turno e marca a atividade da conversa. */
-    const saveTurn = async (fields: { status: string; answer_md?: string; pubmed_query: string | null }) => {
+    const saveTurn = async (fields: {
+      status: string; answer_md?: string; pubmed_query: string | null;
+      conclusion?: string | null; evidence_strength?: EvidenceStrength | null; evidence_reason?: string | null;
+    }) => {
       await admin.from("search_turns").update(fields).eq("id", id);
       await admin.from("searches").update({ updated_at: new Date().toISOString() }).eq("id", sid);
     };
@@ -189,7 +196,7 @@ Deno.serve(async (req) => {
 
     if (followUp) {
       const { data: rows } = await admin.from("sources")
-        .select("pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, publication_types, evidence_level, evidence_label, abstract, summary_pt, url, position, turn_id")
+        .select("pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, publication_types, evidence_level, evidence_label, abstract, summary_pt, url, position, turn_id, retracted")
         .eq("search_id", sid);
       const turnIds = new Set(previous.map((t) => t.id));
       known = ((rows ?? []) as SourceRow[]).filter((r) => turnIds.has(r.turn_id));
@@ -235,12 +242,14 @@ Deno.serve(async (req) => {
 
     // 5. Síntese em português ---------------------------------------------
     const context = articles.map((a, i) =>
-      `[${i + 1}] PMID ${a.pmid}\nTítulo: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nPeriódico/ano: ${a.journal} ${a.year ?? ""}\nResumo: ${a.abstract || "(sem resumo)"}`
+      `[${i + 1}] PMID ${a.pmid}${a.retracted ? "\nATENÇÃO: ARTIGO RETRATADO" : ""}\nTítulo: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nPeriódico/ano: ${a.journal} ${a.year ?? ""}\nResumo: ${a.abstract || "(sem resumo)"}`
     ).join("\n\n");
 
-    const answerMd = await ask(anthropic, CALLS.synthesis,
+    const synthesis = await ask(anthropic, CALLS.synthesis,
       (followUp ? `${CONVERSATION_NOTE}\n\nCONVERSA ATÉ AQUI:\n${history}\n\n` : "") +
       `PERGUNTA DO MÉDICO:\n${standalone}\n\nARTIGOS ENCONTRADOS:\n${context}`);
+    // As duas primeiras linhas (conclusão e força da evidência) vão para colunas próprias.
+    const { conclusion, strength, reason, body: answerMd } = splitConclusion(synthesis);
 
     // 6. Resumo em português de cada artigo novo (em paralelo, curto) ------
     // Um resumo que falha (inclusive por recusa) não derruba a pesquisa: o card fica sem resumo.
@@ -262,10 +271,13 @@ Deno.serve(async (req) => {
       journal: a.journal, year: a.year, volume: a.volume, issue: a.issue, pages: a.pages,
       pmcid: a.pmcid, doi: a.doi, publication_types: a.publicationTypes,
       evidence_level: a.evidenceLevel, evidence_label: a.evidenceLabel,
-      abstract: a.abstract, summary_pt: summaries[i], url: a.url,
+      abstract: a.abstract, summary_pt: summaries[i], url: a.url, retracted: a.retracted,
     })));
     if (sourcesErr) throw new Error(`não gravou as fontes: ${sourcesErr.message}`);
-    await saveTurn({ status: "done", answer_md: answerMd, pubmed_query: pubmedQuery });
+    await saveTurn({
+      status: "done", answer_md: answerMd, pubmed_query: pubmedQuery,
+      conclusion, evidence_strength: strength, evidence_reason: reason,
+    });
 
     return json({ searchId: sid, turnId: id, status: "done", standaloneQuestion: shownStandalone });
   } catch (e) {
@@ -300,6 +312,7 @@ function rowToArticle(r: SourceRow): Article {
     url: r.url ?? `https://pubmed.ncbi.nlm.nih.gov/${r.pmid}/`,
     evidenceLevel: (r.evidence_level ?? "low") as Article["evidenceLevel"],
     evidenceLabel: r.evidence_label ?? "Outro",
+    retracted: r.retracted ?? false,
     summaryPt: r.summary_pt,
   };
 }
@@ -393,7 +406,7 @@ function parseArticle(xml: string, pmid: string): Article | null {
   const publicationTypes = [...block.matchAll(/<PublicationType[^>]*>(.*?)<\/PublicationType>/g)].map((m) => m[1]);
   const { evidenceLevel, evidenceLabel } = classify(publicationTypes, title);
   return { pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, publicationTypes, abstract,
-    url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`, evidenceLevel, evidenceLabel };
+    url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`, evidenceLevel, evidenceLabel, retracted: isRetracted(block) };
 }
 
 /** O XML do PubMed traz acentos como entidades ("K&#xf8;ber"). */

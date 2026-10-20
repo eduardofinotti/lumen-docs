@@ -17,3 +17,5 @@ run migrations/0005_reusable_invite_code.sql
 run tests/0005_invites.sql
 run migrations/0006_admin.sql
 run tests/0006_admin.sql
+run migrations/0007_conclusion_retraction_feedback.sql
+run tests/0007_feedback.sql
