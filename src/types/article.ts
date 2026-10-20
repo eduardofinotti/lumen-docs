@@ -17,6 +17,8 @@ export interface ArticleSummary {
   metodo: string;
   resultado: string;
   limitacao: string;
+  /** Total de participantes, quando o resumo do PubMed informa. */
+  amostra?: number;
 }
 
 export interface Article {
@@ -36,6 +38,8 @@ export interface Article {
   source: ArticleSource;
   evidence: EvidenceLevel;
   summary?: ArticleSummary;
+  /** Retratado no PubMed (lido na hora da busca). */
+  retracted?: boolean;
 }
 
 /** Artigo na lista de salvos do médico. */

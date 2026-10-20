@@ -9,7 +9,7 @@ import { mockResultKeyFor, mockResults, type MockResultKey } from "@/lib/mocks/r
 import { demoSeedConversations, type DemoConversationEntry, type DemoTurnEntry } from "@/lib/mocks/searches";
 import { createClient } from "@/lib/supabase/server";
 import type { Conversation, DateRange, SearchSummary, Turn } from "@/types/search";
-import { parseStatus, sourceRowToArticle, type SourceRow } from "./guards";
+import { parseConclusion, parseFeedback, parseStatus, sourceRowToArticle, type SourceRow } from "./guards";
 import { effectiveStatus } from "./turn-status";
 
 export type RunResult = { ok: true; id: string; turnId: string } | { ok: false; error: string };
@@ -99,7 +99,10 @@ function demoEntryToConversation(entry: DemoConversationEntry): Conversation {
         standaloneQuestion: t.standaloneQuestion,
         status: "done",
         answerMd: result.answerMd,
+        conclusion: result.conclusion,
         sources: result.sources,
+        // A demonstração não guarda votos.
+        feedback: null,
         createdAt: t.createdAt,
       };
     }),
@@ -148,8 +151,12 @@ interface TurnRow {
   standalone_question: string | null;
   status: string;
   answer_md: string | null;
+  conclusion: string | null;
+  evidence_strength: string | null;
+  evidence_reason: string | null;
   created_at: string;
   sources: SourceRow[] | null;
+  turn_feedback: { helpful: boolean; reason: string | null }[] | null;
 }
 
 interface ConversationRow {
@@ -163,8 +170,10 @@ interface ConversationRow {
 
 const CONVERSATION_SELECT =
   "id, question, date_range, created_at, updated_at, " +
-  "search_turns (id, position, question, standalone_question, status, answer_md, created_at, " +
-  "sources (position, pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, evidence_label, summary_pt))";
+  "search_turns (id, position, question, standalone_question, status, answer_md, " +
+  "conclusion, evidence_strength, evidence_reason, created_at, " +
+  "sources (position, pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, evidence_label, summary_pt, retracted), " +
+  "turn_feedback (helpful, reason))";
 
 function rowToTurn(row: TurnRow): Turn {
   return {
@@ -174,7 +183,9 @@ function rowToTurn(row: TurnRow): Turn {
     standaloneQuestion: row.position > 1 ? row.standalone_question : null,
     status: effectiveStatus(parseStatus(row.status), row.created_at),
     answerMd: withoutClinicalNote(row.answer_md ?? ""),
+    conclusion: parseConclusion(row.conclusion, row.evidence_strength, row.evidence_reason),
     sources: [...(row.sources ?? [])].sort((a, b) => a.position - b.position).map(sourceRowToArticle),
+    feedback: parseFeedback(row.turn_feedback?.[0]),
     createdAt: row.created_at,
   };
 }

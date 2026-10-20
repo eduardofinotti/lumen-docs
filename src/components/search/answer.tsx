@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { Citation } from "@/components/articles/citation";
 import { CLINICAL_DECISION_NOTE, parseAnswer, type InlineToken } from "@/lib/answer-markdown";
 
-interface CitationProps {
+export interface CitationProps {
   sourceCount: number;
   /** Ausente na versão de impressão, que não tem painel para destacar. */
   onHighlight?: (n: number | null) => void;
@@ -11,7 +11,7 @@ interface CitationProps {
   onCite?: (n: number) => void;
 }
 
-function Inline({ tokens, sourceCount, onHighlight, anchorFor, onCite }: CitationProps & { tokens: InlineToken[] }) {
+export function Inline({ tokens, sourceCount, onHighlight, anchorFor, onCite }: CitationProps & { tokens: InlineToken[] }) {
   return tokens.map((t, i) => {
     if (t.type === "bold") return <strong key={i} className="font-medium text-ink">{t.value}</strong>;
     // Só vira link a citação que aponta para um artigo da lista.

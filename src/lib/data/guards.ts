@@ -1,5 +1,5 @@
 import type { Article, ArticleSummary, EvidenceLevel } from "@/types/article";
-import type { SearchStatus } from "@/types/search";
+import type { AnswerStrength, Conclusion, Feedback, FeedbackReason, SearchStatus } from "@/types/search";
 
 const evidenceLevels: EvidenceLevel[] = [
   "revisao-sistematica",
@@ -68,6 +68,8 @@ export interface SourceRow {
   doi: string | null;
   evidence_label: string | null;
   summary_pt: string | null;
+  /** Ausente nas linhas de antes da 0007. */
+  retracted?: boolean | null;
 }
 
 /** A função classifica com rótulos próprios; aqui viram os níveis da interface. */
@@ -81,7 +83,7 @@ const evidenceByLabel: Record<string, EvidenceLevel> = {
   diretriz: "diretriz",
 };
 
-const summaryLines: [keyof ArticleSummary, RegExp][] = [
+const summaryLines: [Exclude<keyof ArticleSummary, "amostra">, RegExp][] = [
   ["pergunta", /^pergunta\s*:\s*(.+)$/im],
   ["metodo", /^m[ée]todo\s*:\s*(.+)$/im],
   ["resultado", /^resultado\s*:\s*(.+)$/im],
@@ -98,6 +100,10 @@ export function parseSummary(text: string | null): ArticleSummary | undefined {
     if (!value) return undefined;
     summary[key] = value;
   }
+  // Linha opcional (resumos antigos não têm): só um número inteiro, com ou sem ponto de milhar.
+  const sample = plain.match(/^amostra\s*:\s*(\d{1,3}(?:\.\d{3})+|\d+)(?![\d.,]|\s*a\s*\d)/im)?.[1];
+  const amostra = sample ? Number(sample.replace(/\./g, "")) : 0;
+  if (amostra > 0) summary.amostra = amostra;
   return summary as ArticleSummary;
 }
 
@@ -116,5 +122,31 @@ export function sourceRowToArticle(row: SourceRow): Article {
     source: "PubMed",
     evidence: evidenceByLabel[row.evidence_label?.toLowerCase() ?? ""] ?? "outro",
     summary: parseSummary(row.summary_pt),
+    retracted: row.retracted === true,
   };
+}
+
+const strengths: AnswerStrength[] = ["alta", "moderada", "baixa", "insuficiente"];
+
+/** Colunas `conclusion`, `evidence_strength` e `evidence_reason` de `search_turns`. */
+export function parseConclusion(
+  text: string | null,
+  strength: string | null,
+  reason: string | null,
+): Conclusion | null {
+  if (!text?.trim()) return null;
+  const known = strengths.find((s) => s === strength) ?? null;
+  return { text: text.trim(), strength: known, reason: known ? (reason?.trim() || null) : null };
+}
+
+export const feedbackReasons: FeedbackReason[] = ["fora-do-tema", "confusa", "faltou-evidencia", "outro"];
+
+export function isFeedbackReason(value: unknown): value is FeedbackReason {
+  return typeof value === "string" && (feedbackReasons as string[]).includes(value);
+}
+
+/** Linha de `turn_feedback` do próprio médico (a RLS só devolve a dele). */
+export function parseFeedback(row: { helpful: boolean; reason: string | null } | undefined): Feedback | null {
+  if (!row) return null;
+  return { helpful: row.helpful, reason: !row.helpful && isFeedbackReason(row.reason) ? row.reason : null };
 }

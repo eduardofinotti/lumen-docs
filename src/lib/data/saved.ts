@@ -9,7 +9,7 @@ import { getConversation } from "./conversations";
 import { sourceRowToArticle, type SourceRow } from "./guards";
 
 const ARTICLE_COLUMNS =
-  "pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, evidence_label, summary_pt";
+  "pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, evidence_label, summary_pt, retracted";
 
 type ArticleRow = Omit<SourceRow, "position">;
 

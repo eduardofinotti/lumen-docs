@@ -25,19 +25,33 @@ export function formatVancouver(article: Article): string {
     .join(" ");
 }
 
+const strengthLabels = { alta: "Alta", moderada: "Moderada", baixa: "Baixa", insuficiente: "Insuficiente" } as const;
+
+/** "Alta (2 metanálises concordantes)"; null sem força informada. */
+export function strengthText(turn: Turn): string | null {
+  const c = turn.conclusion;
+  if (!c?.strength) return null;
+  return c.reason ? `${strengthLabels[c.strength]} (${c.reason})` : strengthLabels[c.strength];
+}
+
+/** Referências numeradas, avisando o artigo retratado. */
+export function referenceLines(turn: Turn): string {
+  return turn.sources
+    .map((a, i) => `${i + 1}. ${formatVancouver(a)}${a.retracted ? " (Artigo retratado)" : ""}`)
+    .join("\n");
+}
+
 /**
- * Texto copiado por "Copiar com referências": pergunta, resposta, nota final e referências.
+ * Texto copiado por "Copiar com referências": pergunta, conclusão, resposta, nota final e referências.
  * Numa continuação, a pergunta é a completa ("e na grave?" sozinho não faz sentido fora da conversa).
  */
 export function buildCopyText(title: string, turn: Turn): string {
-  const parts = [
-    `Pergunta: ${turn.standaloneQuestion ?? title}`,
-    markdownToPlainText(turn.answerMd),
-    CLINICAL_DECISION_NOTE,
-  ];
-  if (turn.sources.length > 0) {
-    const refs = turn.sources.map((a, i) => `${i + 1}. ${formatVancouver(a)}`).join("\n");
-    parts.push(`Referências\n${refs}`);
+  const parts = [`Pergunta: ${turn.standaloneQuestion ?? title}`];
+  if (turn.conclusion) {
+    const strength = strengthText(turn);
+    parts.push(`Em resumo: ${turn.conclusion.text}${strength ? `\nForça da evidência: ${strength}` : ""}`);
   }
+  parts.push(markdownToPlainText(turn.answerMd), CLINICAL_DECISION_NOTE);
+  if (turn.sources.length > 0) parts.push(`Referências\n${referenceLines(turn)}`);
   return parts.join("\n\n");
 }

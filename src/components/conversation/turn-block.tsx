@@ -2,10 +2,13 @@
 
 import { ChevronDown, FileDown } from "lucide-react";
 import { Answer } from "@/components/search/answer";
+import { ConclusionBlock } from "@/components/search/conclusion";
 import { CopyButton } from "@/components/search/copy-button";
+import { ShareButton } from "@/components/search/share-button";
 import { SearchStatusMessage } from "@/components/search/search-status-message";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { buildShareText } from "@/lib/share";
 import { buildCopyText } from "@/lib/vancouver";
 import type { Turn } from "@/types/search";
 import { anchorFor, SourcesList, type SaveContext } from "./sources-panel";
@@ -48,6 +51,15 @@ export function TurnBlock({
   onRetry: () => void;
 }) {
   const count = turn.sources.length;
+  const citation = {
+    sourceCount: count,
+    onHighlight: (n: number | null) => {
+      if (n !== null) onSelect();
+      onHighlight(n);
+    },
+    anchorFor: (n: number) => `#${anchorFor(turn, n)}`,
+    onCite,
+  };
 
   return (
     <section
@@ -69,18 +81,15 @@ export function TurnBlock({
             selected && "lg:bg-surface-sunken",
           )}
         >
-          <Answer
-            markdown={turn.answerMd}
-            sourceCount={count}
-            onHighlight={(n) => {
-              if (n !== null) onSelect();
-              onHighlight(n);
-            }}
-            anchorFor={(n) => `#${anchorFor(turn, n)}`}
-            onCite={onCite}
-          />
+          {turn.conclusion && (
+            <div className="mb-5">
+              <ConclusionBlock conclusion={turn.conclusion} {...citation} />
+            </div>
+          )}
+          <Answer markdown={turn.answerMd} {...citation} />
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <CopyButton text={buildCopyText(title, turn)} />
+            <ShareButton text={(siteUrl) => buildShareText(title, turn, siteUrl)} />
             <Button variant="secondary" size="sm" asChild>
               <a href={`/imprimir/${turn.id}`} target="_blank" rel="noopener">
                 <FileDown aria-hidden="true" />

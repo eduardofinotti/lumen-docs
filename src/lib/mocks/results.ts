@@ -1,4 +1,5 @@
 import type { Article } from "@/types/article";
+import type { Conclusion } from "@/types/search";
 
 /**
  * Respostas de exemplo da fase de front-end. Os artigos são reais e os PMIDs
@@ -6,6 +7,7 @@ import type { Article } from "@/types/article";
  */
 export interface MockResult {
   answerMd: string;
+  conclusion: Conclusion | null;
   sources: Article[];
 }
 
@@ -20,6 +22,11 @@ export type MockResultKey = keyof typeof mockQuestions | "demonstracao";
 
 export const mockResults: Record<MockResultKey, MockResult> = {
   metformina: {
+    conclusion: {
+      text: "A metformina reduz a progressão para diabetes tipo 2 em adultos de risco, com efeito menor que o da mudança intensiva no estilo de vida [1] [3].",
+      strength: "alta",
+      reason: "2 ECRs e uma revisão Cochrane",
+    },
     answerMd: `Sim. Em adultos com risco aumentado, a metformina reduziu a incidência de diabetes tipo 2 em comparação com placebo, mas com efeito menor que o da intervenção intensiva no estilo de vida [1] [2].
 
 - No Diabetes Prevention Program, a metformina reduziu a incidência de diabetes em 31% e a intervenção no estilo de vida em 58%, ambas comparadas a placebo [1].
@@ -57,6 +64,7 @@ export const mockResults: Record<MockResultKey, MockResult> = {
             "Em seguimento médio de 2,8 anos, a incidência de diabetes caiu 58% com estilo de vida e 31% com metformina, comparadas a placebo.",
           limitacao:
             "População dos Estados Unidos com perfil de risco específico; efeito da metformina menor em pessoas mais velhas e com IMC mais baixo.",
+          amostra: 3234,
         },
       },
       {
@@ -108,6 +116,11 @@ export const mockResults: Record<MockResultKey, MockResult> = {
   },
 
   sglt2: {
+    conclusion: {
+      text: "Dapagliflozina e empagliflozina reduzem hospitalização por insuficiência cardíaca com fração de ejeção reduzida [1] [2] [3].",
+      strength: "alta",
+      reason: "2 ECRs concordantes e metanálise",
+    },
     answerMd: `Sim. Em pacientes com insuficiência cardíaca e fração de ejeção reduzida, dapagliflozina e empagliflozina reduziram o desfecho combinado de morte cardiovascular ou hospitalização por insuficiência cardíaca [1] [2] [3].
 
 - No DAPA-HF, a dapagliflozina reduziu o desfecho combinado de piora da insuficiência cardíaca ou morte cardiovascular (HR 0,74), com efeito semelhante em pacientes com e sem diabetes [1].
@@ -144,6 +157,7 @@ export const mockResults: Record<MockResultKey, MockResult> = {
             "Redução do desfecho combinado de piora da insuficiência cardíaca ou morte cardiovascular (HR 0,74), semelhante em pacientes com e sem diabetes.",
           limitacao:
             "Seguimento mediano de 18 meses; poucos pacientes negros e em classe funcional IV.",
+          amostra: 4744,
         },
       },
       {
@@ -174,6 +188,7 @@ export const mockResults: Record<MockResultKey, MockResult> = {
             "Redução de morte cardiovascular ou hospitalização por insuficiência cardíaca (HR 0,75) e queda mais lenta da taxa de filtração glomerular.",
           limitacao:
             "Seguimento mediano de 16 meses; sem redução isolada significativa de morte cardiovascular.",
+          amostra: 3730,
         },
       },
       {
@@ -210,6 +225,11 @@ export const mockResults: Record<MockResultKey, MockResult> = {
   },
 
   progesterona: {
+    conclusion: {
+      text: "A progesterona vaginal reduz o parto prematuro em gestação única com colo curto [1] [2] [3].",
+      strength: "alta",
+      reason: "ECRs e metanálise de dados individuais",
+    },
     answerMd: `Sim. Em gestações únicas com colo uterino curto na ultrassonografia do segundo trimestre, a progesterona vaginal reduziu o parto prematuro [1] [2] [3].
 
 - Em gestantes com colo de até 15 mm, a progesterona vaginal 200 mg reduziu o parto prematuro espontâneo antes de 34 semanas (19,2% contra 34,4% com placebo) [1].
@@ -238,6 +258,7 @@ export const mockResults: Record<MockResultKey, MockResult> = {
             "Parto espontâneo antes de 34 semanas em 19,2% com progesterona contra 34,4% com placebo.",
           limitacao:
             "A redução da morbidade neonatal não foi estatisticamente significativa; amostra pequena para desfechos neonatais.",
+          amostra: 250,
         },
       },
       {
@@ -268,6 +289,7 @@ export const mockResults: Record<MockResultKey, MockResult> = {
           resultado:
             "Parto antes de 33 semanas em 8,9% com progesterona contra 16,1% com placebo, e menos síndrome do desconforto respiratório.",
           limitacao: "Excluiu colos abaixo de 10 mm e gestações múltiplas; resultado não se aplica a esses grupos.",
+          amostra: 465,
         },
       },
       {
@@ -304,6 +326,7 @@ export const mockResults: Record<MockResultKey, MockResult> = {
   },
 
   demonstracao: {
+    conclusion: null,
     answerMd: `**Resposta de demonstração.** A busca no PubMed ainda não está ligada nesta fase do Lúmen, então não há artigos para esta pergunta.
 
 Por enquanto, só algumas perguntas sugeridas na tela inicial têm uma resposta de exemplo, com artigos reais.`,

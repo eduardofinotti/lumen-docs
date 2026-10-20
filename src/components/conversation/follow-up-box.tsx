@@ -3,6 +3,7 @@
 import { ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { DictationButton } from "@/components/search/dictation-button";
 import { PatientBanner } from "@/components/search/patient-banner";
 import { Button } from "@/components/ui/button";
 import { MAX_QUESTION_LENGTH } from "@/lib/question";
@@ -23,6 +24,7 @@ export function FollowUpBox({
   onEdit: () => void;
 }) {
   const [value, setValue] = useState("");
+  const [dictationMessage, setDictationMessage] = useState<string | null>(null);
 
   async function submit() {
     if (disabled) return;
@@ -79,6 +81,16 @@ export function FollowUpBox({
               aria-describedby={error ? "continuacao-erro" : undefined}
               className="block max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-body text-ink outline-none [field-sizing:content] placeholder:text-ink-muted focus-visible:shadow-none disabled:opacity-60"
             />
+            <DictationButton
+              value={value}
+              onChange={(v) => {
+                setValue(v);
+                onEdit();
+              }}
+              onError={setDictationMessage}
+              disabled={disabled}
+              size="small"
+            />
             <Button type="submit" size="icon-sm" disabled={disabled} aria-label="Enviar pergunta" className="pointer-coarse:size-10">
               <ArrowUp aria-hidden="true" />
             </Button>
@@ -86,6 +98,11 @@ export function FollowUpBox({
           {error && (
             <p id="continuacao-erro" role="alert" className="text-body-sm text-danger">
               {error}
+            </p>
+          )}
+          {!error && dictationMessage && (
+            <p role="status" className="text-body-sm text-ink-secondary">
+              {dictationMessage}
             </p>
           )}
         </form>

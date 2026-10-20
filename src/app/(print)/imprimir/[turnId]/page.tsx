@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { PrintControls } from "@/components/print/print-controls";
 import { Answer } from "@/components/search/answer";
+import { ConclusionBlock } from "@/components/search/conclusion";
 import { getTurn } from "@/lib/data/conversations";
 import { dateRangeLabel } from "@/lib/date-range";
 import { pubmedUrl } from "@/lib/evidence";
@@ -47,6 +48,15 @@ export default async function ImprimirPage({ params }: { params: Params }) {
         <h2 id="resposta" className="label-caps">
           Resposta
         </h2>
+        {turn.conclusion && (
+          <div className="mt-4 break-inside-avoid">
+            <ConclusionBlock
+              conclusion={turn.conclusion}
+              sourceCount={turn.sources.length}
+              anchorFor={(n) => `#ref-${n}`}
+            />
+          </div>
+        )}
         <div className="mt-4">
           <Answer markdown={turn.answerMd} sourceCount={turn.sources.length} anchorFor={(n) => `#ref-${n}`} />
         </div>
@@ -62,7 +72,8 @@ export default async function ImprimirPage({ params }: { params: Params }) {
               <li key={article.pmid} id={`ref-${i + 1}`} className="grid grid-cols-[2rem_1fr] break-inside-avoid">
                 <span className="font-medium text-lumen">[{i + 1}]</span>
                 <span>
-                  {formatVancouver(article)}{" "}
+                  {formatVancouver(article)}
+                  {article.retracted && <strong className="font-medium text-danger"> Artigo retratado.</strong>}{" "}
                   <a href={pubmedUrl(article.pmid)} className="break-all text-ink-secondary underline">
                     {pubmedUrl(article.pmid)}
                   </a>

@@ -12,7 +12,9 @@ const linkLabels = {
   PubMed: "Ver no PubMed",
 } as const;
 
-const summaryLabels: [keyof ArticleSummary, string][] = [
+const sampleFormat = new Intl.NumberFormat("pt-BR");
+
+const summaryLabels: [Exclude<keyof ArticleSummary, "amostra">, string][] = [
   ["pergunta", "Pergunta"],
   ["metodo", "Método"],
   ["resultado", "Resultado"],
@@ -88,9 +90,25 @@ export function ArticleCard({
             {article.source}.
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {article.retracted && (
+              <span className="inline-flex items-center rounded-sm border border-danger/40 px-2 py-0.5 text-label text-danger uppercase">
+                Artigo retratado
+              </span>
+            )}
             <EvidenceBadge level={article.evidence} />
+            {article.summary?.amostra && (
+              <span className="text-body-sm text-ink-secondary">
+                <span aria-hidden="true">n = {sampleFormat.format(article.summary.amostra)}</span>
+                <span className="sr-only">Amostra: {sampleFormat.format(article.summary.amostra)} participantes</span>
+              </span>
+            )}
             <span className="font-mono text-code text-ink-secondary">PMID {article.pmid}</span>
           </div>
+          {article.retracted && (
+            <p className="text-body-sm text-danger">
+              Este artigo foi retratado pela revista. Os resultados dele não devem ser usados como evidência.
+            </p>
+          )}
           {article.summary && <ArticleSummaryDetails summary={article.summary} />}
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <a

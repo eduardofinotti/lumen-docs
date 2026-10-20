@@ -8,6 +8,25 @@ export type SearchStatus = "pending" | "done" | "error" | "no_evidence";
 /** Limite de perguntas por conversa (as que deram erro não contam). */
 export const MAX_TURNS = 20;
 
+/** Força geral da evidência da resposta, dada pela síntese com regras fixas. */
+export type AnswerStrength = "alta" | "moderada" | "baixa" | "insuficiente";
+
+/** "Em resumo" no topo da resposta; respostas antigas não têm. */
+export interface Conclusion {
+  text: string;
+  strength: AnswerStrength | null;
+  /** Motivo curto ("2 metanálises concordantes"). */
+  reason: string | null;
+}
+
+export type FeedbackReason = "fora-do-tema" | "confusa" | "faltou-evidencia" | "outro";
+
+/** Voto do médico em "Essa resposta ajudou?". */
+export interface Feedback {
+  helpful: boolean;
+  reason: FeedbackReason | null;
+}
+
 /** Uma pergunta da conversa e sua resposta (`search_turns`). */
 export interface Turn {
   id: string;
@@ -18,7 +37,10 @@ export interface Turn {
   status: SearchStatus;
   /** Resposta em markdown simples, com citações [n] que apontam para `sources[n-1]`. */
   answerMd: string;
+  conclusion: Conclusion | null;
   sources: Article[];
+  /** Voto do médico nesta resposta; null sem voto. */
+  feedback: Feedback | null;
   createdAt: string;
 }
 

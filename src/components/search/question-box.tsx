@@ -1,10 +1,12 @@
 "use client";
 
 import { Search } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { dateRanges, isDateRange } from "@/lib/date-range";
 import { MAX_QUESTION_LENGTH } from "@/lib/question";
+import { DictationButton } from "./dictation-button";
 import type { DateRange } from "@/types/search";
 
 /** Caixa de pergunta: o elemento central da tela de pesquisa. */
@@ -23,6 +25,7 @@ export function QuestionBox({
   onSubmit: () => void;
   error: string | null;
 }) {
+  const [dictationMessage, setDictationMessage] = useState<string | null>(null);
   return (
     <form
       onSubmit={(e) => {
@@ -73,15 +76,23 @@ export function QuestionBox({
               ))}
             </NativeSelect>
           </div>
-          <Button type="submit">
-            <Search aria-hidden="true" />
-            Pesquisar
-          </Button>
+          <div className="flex items-center gap-2">
+            <DictationButton value={value} onChange={onChange} onError={setDictationMessage} />
+            <Button type="submit">
+              <Search aria-hidden="true" />
+              Pesquisar
+            </Button>
+          </div>
         </div>
       </div>
       {error && (
         <p id="pergunta-erro" role="alert" className="mt-3 text-body-sm text-danger">
           {error}
+        </p>
+      )}
+      {!error && dictationMessage && (
+        <p role="status" className="mt-3 text-body-sm text-ink-secondary">
+          {dictationMessage}
         </p>
       )}
     </form>
