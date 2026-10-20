@@ -5,6 +5,7 @@ import {
   inviteStatus,
   generateInviteCode,
   normalizeInviteCode,
+  helpfulShare,
   outcomeShares,
   parseCredits,
   validateInviteCode,
@@ -117,5 +118,16 @@ describe("inviteStatus", () => {
       label: "Cadastrado",
       active: false,
     });
+  });
+});
+
+describe("helpfulShare", () => {
+  it("dá a porcentagem de respostas que ajudaram", () => {
+    expect(helpfulShare(3, 1)).toBe(75);
+    expect(helpfulShare(2, 1)).toBe(67);
+  });
+
+  it("sem votos, null (não mostra 0%)", () => {
+    expect(helpfulShare(0, 0)).toBeNull();
   });
 });

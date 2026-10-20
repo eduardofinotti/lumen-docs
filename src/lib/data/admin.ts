@@ -11,7 +11,8 @@ export async function getAdminOverview(): Promise<AdminOverview | null> {
   if (!supabase) return demoAdminOverview;
   const { data, error } = await supabase.rpc("admin_overview");
   if (error || !data) return null;
-  return data as AdminOverview;
+  // Antes da migration 0007 a função ainda não traz os votos.
+  return { feedbackHelpful: 0, feedbackNotHelpful: 0, feedbackReasons: [], ...(data as Partial<AdminOverview>) } as AdminOverview;
 }
 
 interface UserRow {

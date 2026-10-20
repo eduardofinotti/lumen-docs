@@ -47,6 +47,7 @@
 - `0005_reusable_invite_code.sql`: código de convite reutilizável (`reusable`, conta os usos
   em `uses`). Encerrar: `update invites set reusable = false, used_at = now() where code = '...'`.
 - `0006_admin.sql`: `profiles.is_admin` e `blocked_at`; funções `admin_*` do painel /admin
+- `0007_conclusion_retraction_feedback.sql`: conclusão e força da evidência em `search_turns`, `retracted` nas fontes e nos salvos, votos em `turn_feedback` (e no `admin_overview`)
   (conferem o admin no banco); bloqueado não gasta crédito. Novo admin:
   `update profiles set is_admin = true where id = (select id from auth.users where email = '...')`.
 

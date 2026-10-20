@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { continueConversation, createConversation, type RunResult } from "@/lib/data/conversations";
+import { saveFeedback } from "@/lib/data/feedback";
+import { isFeedbackReason } from "@/lib/data/guards";
 import { isDateRange } from "@/lib/date-range";
 import { validateQuestion } from "@/lib/question";
+
+// Uuid no banco; na demonstração, ids como "exemplo-sglt2-1".
+const TURN_ID = /^[\w-]{1,64}$/;
 
 /** Primeira pergunta de uma pesquisa. */
 export async function startSearch(question: string, dateRange: string): Promise<RunResult> {
@@ -34,4 +39,16 @@ export async function retryTurn(searchId: string, turnId: string): Promise<RunRe
   const result = await continueConversation(searchId, "", turnId);
   revalidatePath("/", "layout");
   return result;
+}
+
+/** "Essa resposta ajudou?": sim, ou não com motivo opcional. */
+export async function sendFeedback(
+  turnId: string,
+  helpful: boolean,
+  reason: string | null,
+): Promise<{ ok: boolean }> {
+  if (!TURN_ID.test(turnId)) return { ok: false };
+  if (reason !== null && !isFeedbackReason(reason)) return { ok: false };
+  const ok = await saveFeedback(turnId, { helpful, reason: helpful ? null : reason });
+  return { ok };
 }

@@ -1,10 +1,52 @@
-import { outcomeShares } from "@/lib/admin";
+import { helpfulShare, outcomeShares } from "@/lib/admin";
 import { specialtyLabel } from "@/lib/specialties";
 import { cn } from "@/lib/utils";
 import type { AdminOverview } from "@/types/admin";
 import { DailyChart } from "./daily-chart";
 
 const number = new Intl.NumberFormat("pt-BR");
+
+const reasonLabels: Record<string, string> = {
+  "fora-do-tema": "Artigos fora do tema",
+  confusa: "Resposta confusa",
+  "faltou-evidencia": "Faltou evidência",
+  outro: "Outro",
+  "": "Sem motivo",
+};
+
+function FeedbackCard({ data }: { data: AdminOverview }) {
+  const votes = data.feedbackHelpful + data.feedbackNotHelpful;
+  const share = helpfulShare(data.feedbackHelpful, data.feedbackNotHelpful);
+  return (
+    <Card title="Essa resposta ajudou?">
+      {share === null ? (
+        <p className="text-body-sm text-ink-secondary">Nenhum voto ainda.</p>
+      ) : (
+        <>
+          <p className="font-display text-display-md text-ink">{share}%</p>
+          <p className="mt-1 text-body-sm text-ink-secondary">
+            disseram sim · {number.format(votes)} {votes === 1 ? "voto" : "votos"}
+          </p>
+          {data.feedbackReasons.length > 0 && (
+            <>
+              <p className="mt-4 text-body-sm text-ink">
+                Motivos dos {number.format(data.feedbackNotHelpful)} &quot;não&quot;
+              </p>
+              <ul className="mt-2 space-y-2">
+                {data.feedbackReasons.map((r) => (
+                  <li key={r.reason} className="flex items-center justify-between gap-3 text-body-sm">
+                    <span className="text-ink">{reasonLabels[r.reason] ?? r.reason}</span>
+                    <span className="text-ink-secondary tabular-nums">{number.format(r.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
 
 function Stat({ label, value, note }: { label: string; value: number; note?: string }) {
   return (
@@ -48,7 +90,7 @@ export function Overview({ data }: { data: AdminOverview }) {
         <DailyChart daily={data.daily} />
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <Card title="Resultado das perguntas">
           {answered === 0 ? (
             <p className="text-body-sm text-ink-secondary">Nenhuma pergunta respondida ainda.</p>
@@ -78,6 +120,8 @@ export function Overview({ data }: { data: AdminOverview }) {
             </>
           )}
         </Card>
+
+        <FeedbackCard data={data} />
 
         <Card title="Especialidades">
           {data.specialties.length === 0 ? (

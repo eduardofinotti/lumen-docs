@@ -18,6 +18,12 @@ export const demoAdminOverview: AdminOverview = {
   statusNoEvidence: 4,
   statusError: 2,
   savedArticles: 9,
+  feedbackHelpful: 14,
+  feedbackNotHelpful: 3,
+  feedbackReasons: [
+    { reason: "fora-do-tema", total: 2 },
+    { reason: "", total: 1 },
+  ],
   specialties: [
     { specialty: "endocrinologia", total: 2 },
     { specialty: "cardiologia", total: 1 },

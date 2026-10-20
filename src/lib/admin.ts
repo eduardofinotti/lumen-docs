@@ -49,6 +49,12 @@ export function outcomeShares(o: Outcomes): Outcomes {
   return { done: pct(o.done), noEvidence: pct(o.noEvidence), error: pct(o.error) };
 }
 
+/** % de votos "sim" em "Essa resposta ajudou?"; null sem votos. */
+export function helpfulShare(yes: number, no: number): number | null {
+  const total = yes + no;
+  return total === 0 ? null : Math.round((yes / total) * 100);
+}
+
 const signups = (n: number) => `${n} ${n === 1 ? "cadastro" : "cadastros"}`;
 
 /** Situação de um convite, como aparece na lista. `active`: ainda deixa alguém entrar. */

@@ -28,7 +28,7 @@ export function CopyButton({ text, label = "Copiar com referências" }: { text: 
         {status === "copiado" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
         {status === "copiado" ? "Copiado" : label}
       </Button>
-      <span role="status" className="text-body-sm text-danger">
+      <span role="status" className="text-body-sm text-danger empty:hidden">
         {status === "erro" && "Não foi possível copiar. Selecione o texto e copie manualmente."}
       </span>
     </div>

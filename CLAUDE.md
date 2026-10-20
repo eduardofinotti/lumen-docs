@@ -41,9 +41,16 @@ Entorno
     dados de uso (só números, nunca o texto das perguntas), usuários (créditos,
     suspender acesso) e códigos de acesso (uso único ou reutilizável, convite por
     e-mail). Tudo passa pelas funções `admin_*` do banco, que conferem o admin.
+14. Resposta com "Em resumo" no topo e a força geral da evidência (Alta, Moderada,
+    Baixa, Insuficiente, por regras fixas no prompt da síntese).
+15. Artigo retratado no PubMed: etiqueta no card e fora da evidência da síntese;
+    tamanho da amostra (n = …) no card quando o resumo informa.
+16. Enviar a resposta (só texto, nada público): menu do celular ou WhatsApp Web.
+17. Ditar a pergunta por voz (reconhecimento de voz do navegador; some sem suporte).
+18. "Essa resposta ajudou?" (sim / não com motivo); só números no painel admin.
 Regras fixas da síntese: nunca dar conduta; sempre terminar lembrando que a
 decisão clínica é do médico; só citar PMIDs recebidos da busca.
-Próxima etapa: Semantic Scholar e arXiv.
+Próxima etapa: diretrizes brasileiras (sociedades e PCDT), depois Semantic Scholar e arXiv.
 v2 (não fazer agora): alertas de novos artigos, comparar dois artigos, pastas
 de artigos salvos.
 

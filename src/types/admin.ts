@@ -12,6 +12,11 @@ export interface AdminOverview {
   statusNoEvidence: number;
   statusError: number;
   savedArticles: number;
+  /** Votos em "Essa resposta ajudou?". */
+  feedbackHelpful: number;
+  feedbackNotHelpful: number;
+  /** Motivos dos "não" ("" = sem motivo). */
+  feedbackReasons: { reason: string; total: number }[];
   /** Especialidade (id de `specialties`, ou "" sem especialidade) e quantos médicos. */
   specialties: { specialty: string; total: number }[];
   /** Perguntas por dia, nos últimos 30 dias (horário de Brasília). */
