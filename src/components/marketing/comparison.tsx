@@ -38,7 +38,15 @@ const rows: { criterion: string; answers: [string, string, string] }[] = [
     answers: [
       "Você identifica pelo tipo de estudo ou pelos filtros.",
       "Raramente informado.",
-      "Indicado em cada artigo: revisão sistemática, ensaio clínico, coorte e outros.",
+      "Indicado em cada artigo, e a força geral da evidência no topo da resposta.",
+    ],
+  },
+  {
+    criterion: "Artigo retratado",
+    answers: [
+      "Marcado na página do artigo, se você abrir.",
+      "Pode ser citado sem aviso.",
+      "Marcado no card e fora da evidência da resposta.",
     ],
   },
   {

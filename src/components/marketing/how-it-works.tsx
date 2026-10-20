@@ -12,7 +12,7 @@ const steps = [
   },
   {
     title: "Você recebe o resumo",
-    text: "Uma síntese em português em que cada afirmação traz o número do artigo que a sustenta, com o link para o original.",
+    text: "A conclusão e a força da evidência no topo, depois uma síntese em português em que cada afirmação traz o número do artigo que a sustenta, com o link para o original.",
   },
 ];
 

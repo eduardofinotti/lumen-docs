@@ -9,6 +9,7 @@ const principles = [
   "Cada afirmação tem um número que leva ao artigo no PubMed, identificado pelo PMID.",
   "O nível de evidência de cada artigo aparece ao lado dele: revisão sistemática, ensaio clínico, coorte e outros.",
   "Quando a evidência é insuficiente, a resposta diz isso antes de qualquer síntese.",
+  "Artigo retratado pela revista aparece marcado e não sustenta nenhuma afirmação.",
 ];
 
 export function Trust() {
