@@ -22,7 +22,17 @@ export function splitConclusion(text: string): {
   const conclusion = lines[0]?.match(/^em resumo\s*:\s*(.+)$/i)?.[1]?.trim();
   if (!conclusion || rest.length === 0) return none;
 
-  const force = lines[1]?.match(/^for[çc]a da evid[êe]ncia\s*:\s*(.+)$/i)?.[1]?.trim() ?? "";
+  // A força às vezes vem num parágrafo próprio, depois de uma linha em branco.
+  const forceLine = /^for[çc]a da evid[êe]ncia\s*:\s*(.+)$/i;
+  let forceText = lines[1];
+  if (!forceText && rest.length > 1) {
+    const next = rest[0].replace(/\*\*/g, "").trim();
+    if (forceLine.test(next) && !next.includes("\n")) {
+      forceText = next;
+      rest.shift();
+    }
+  }
+  const force = forceText?.match(forceLine)?.[1]?.trim() ?? "";
   const [label, ...why] = force.split(/\s+[—–-]\s+/);
   const strength = STRENGTHS.find((s) => s === label?.toLowerCase()) ?? null;
   const reason = strength && why.length > 0 ? why.join(" — ").trim() : null;

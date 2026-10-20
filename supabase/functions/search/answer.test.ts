@@ -23,6 +23,16 @@ describe("splitConclusion", () => {
     expect(r.body).toBe(body);
   });
 
+  test("aceita linha em branco entre a conclusão e a força", () => {
+    const text = `Em resumo: os artigos respondem só em parte [1].\n\nForça da evidência: Baixa — diretriz sem números\n\n${body}`;
+    expect(splitConclusion(text)).toEqual({
+      conclusion: "os artigos respondem só em parte [1].",
+      strength: "baixa",
+      reason: "diretriz sem números",
+      body,
+    });
+  });
+
   test("força sem motivo", () => {
     expect(splitConclusion(`Em resumo: nada.\nForça da evidência: Insuficiente\n\n${body}`)).toMatchObject({
       strength: "insuficiente",
