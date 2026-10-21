@@ -1,3 +1,4 @@
+import { isPreprint } from "@/lib/article-links";
 import type { Article, ArticleSummary, EvidenceLevel } from "@/types/article";
 import type { AnswerStrength, Conclusion, Feedback, FeedbackReason, SearchStatus } from "@/types/search";
 
@@ -9,6 +10,7 @@ const evidenceLevels: EvidenceLevel[] = [
   "relato-de-caso",
   "diretriz",
   "diretriz-brasileira",
+  "preprint",
   "outro",
 ];
 
@@ -36,7 +38,7 @@ export function isArticle(value: unknown): value is Article {
     typeof value.journal === "string" &&
     (typeof value.year === "number" || value.year === null) &&
     ["volume", "issue", "pages"].every((k) => value[k] === undefined || typeof value[k] === "string") &&
-    value.source === "PubMed" &&
+    (value.source === "PubMed" || value.source === "medRxiv") &&
     typeof value.evidence === "string" &&
     (evidenceLevels as string[]).includes(value.evidence) &&
     (value.summary === undefined || isSummary(value.summary))
@@ -83,6 +85,7 @@ const evidenceByLabel: Record<string, EvidenceLevel> = {
   "relato de caso": "relato-de-caso",
   diretriz: "diretriz",
   "diretriz brasileira": "diretriz-brasileira",
+  preprint: "preprint",
 };
 
 const summaryLines: [Exclude<keyof ArticleSummary, "amostra">, RegExp][] = [
@@ -121,7 +124,7 @@ export function sourceRowToArticle(row: SourceRow): Article {
     pages: row.pages ?? undefined,
     pmcid: row.pmcid ?? undefined,
     doi: row.doi ?? undefined,
-    source: "PubMed",
+    source: isPreprint(row) ? "medRxiv" : "PubMed",
     evidence: evidenceByLabel[row.evidence_label?.toLowerCase() ?? ""] ?? "outro",
     summary: parseSummary(row.summary_pt),
     retracted: row.retracted === true,

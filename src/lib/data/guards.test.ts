@@ -35,6 +35,13 @@ describe("sourceRowToArticle", () => {
     expect(sourceRowToArticle({ ...row, evidence_label: "Diretriz brasileira" }).evidence).toBe("diretriz-brasileira");
     expect(sourceRowToArticle({ ...row, evidence_label: "Diretriz" }).evidence).toBe("diretriz");
   });
+
+  test("preprint do medRxiv: etiqueta e fonte próprias", () => {
+    const article = sourceRowToArticle({ ...row, pmid: "PPR1030829", evidence_label: "Preprint", journal: "medRxiv" });
+    expect(article.evidence).toBe("preprint");
+    expect(article.source).toBe("medRxiv");
+    expect(sourceRowToArticle(row).source).toBe("PubMed");
+  });
 });
 
 describe("artigo retratado", () => {

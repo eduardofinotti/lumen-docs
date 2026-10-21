@@ -6,7 +6,7 @@ import { Answer } from "@/components/search/answer";
 import { ConclusionBlock } from "@/components/search/conclusion";
 import { getTurn } from "@/lib/data/conversations";
 import { dateRangeLabel } from "@/lib/date-range";
-import { pubmedUrl } from "@/lib/evidence";
+import { articleUrl } from "@/lib/article-links";
 import { formatDateTime } from "@/lib/format";
 import { formatVancouver } from "@/lib/vancouver";
 
@@ -74,8 +74,8 @@ export default async function ImprimirPage({ params }: { params: Params }) {
                 <span>
                   {formatVancouver(article)}
                   {article.retracted && <strong className="font-medium text-danger"> Artigo retratado.</strong>}{" "}
-                  <a href={pubmedUrl(article.pmid)} className="break-all text-ink-secondary underline">
-                    {pubmedUrl(article.pmid)}
+                  <a href={articleUrl(article)} className="break-all text-ink-secondary underline">
+                    {articleUrl(article)}
                   </a>
                 </span>
               </li>

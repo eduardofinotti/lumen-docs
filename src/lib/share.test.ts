@@ -55,6 +55,14 @@ describe("buildShareText", () => {
   });
 
   // Texto longo demais faz o WhatsApp Web descartar a mensagem e mandar só o link.
+  test("preprint citado: link do medRxiv e aviso de sem revisão por pares", () => {
+    const preprint = { ...turn.sources[0], pmid: "PPR1030829", journal: "medRxiv", year: 2025, doi: "10.1101/2025.06.03.25328908",
+      source: "medRxiv" as const, evidence: "preprint" as const };
+    const text = buildShareText("P", { ...turn, sources: [preprint] }, "https://lumen.exemplo");
+    expect(text).toContain("https://doi.org/10.1101/2025.06.03.25328908 (preprint, sem revisão por pares)");
+    expect(text).not.toContain("pubmed.ncbi.nlm.nih.gov/PPR");
+  });
+
   describe("resposta longa", () => {
     const base = turn.sources[0];
     const sources = Array.from({ length: 12 }, (_, i) => ({ ...base, pmid: String(1000 + i), title: `Estudo ${i + 1} ${"palavra ".repeat(20)}` }));

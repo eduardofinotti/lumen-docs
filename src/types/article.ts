@@ -6,11 +6,12 @@ export type EvidenceLevel =
   | "relato-de-caso"
   | "diretriz"
   | "diretriz-brasileira"
+  | "preprint"
   | "outro";
 
 export type EvidenceStrength = "alta" | "media" | "baixa";
 
-export type ArticleSource = "PubMed";
+export type ArticleSource = "PubMed" | "medRxiv";
 
 /** Resumo do artigo em português, nos quatro blocos fixos. */
 export interface ArticleSummary {

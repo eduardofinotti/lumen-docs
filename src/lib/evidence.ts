@@ -8,6 +8,7 @@ export const evidenceLabels: Record<EvidenceLevel, string> = {
   "relato-de-caso": "Relato de caso",
   diretriz: "Diretriz",
   "diretriz-brasileira": "Diretriz brasileira",
+  preprint: "Preprint",
   outro: "Outro",
 };
 
@@ -18,6 +19,7 @@ export const evidenceStrength: Record<EvidenceLevel, EvidenceStrength> = {
   "caso-controle": "media",
   diretriz: "media",
   "diretriz-brasileira": "media",
+  preprint: "baixa",
   "relato-de-caso": "baixa",
   outro: "baixa",
 };

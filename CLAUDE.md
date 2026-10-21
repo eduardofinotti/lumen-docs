@@ -4,7 +4,7 @@
 Plataforma web onde médicos fazem perguntas clínicas em português e recebem
 respostas baseadas em artigos científicos reais, resumidas em português, com link
 para cada artigo. Nunca inventa referência.
-Fonte na v1: PubMed. Semantic Scholar e arXiv entram depois, no mesmo fluxo.
+Fontes: PubMed (com diretrizes brasileiras) e preprints do medRxiv pelo Europe PMC. Semantic Scholar entra depois.
 Público: médicos brasileiros com pouca familiaridade com tecnologia.
 Toda a interface em português do Brasil.
 Cadastro restrito por enquanto: só entra quem tiver convite (lista de e-mails
@@ -48,9 +48,13 @@ Entorno
 16. Enviar a resposta (só texto, nada público): menu do celular ou WhatsApp Web.
 17. Ditar a pergunta por voz (reconhecimento de voz do navegador; some sem suporte).
 18. "Essa resposta ajudou?" (sim / não com motivo); só números no painel admin.
+19. Diretrizes brasileiras: busca extra no PubMed por diretrizes de sociedades brasileiras
+    (até 3 no topo, etiqueta "Diretriz brasileira"); aviso quando nenhuma é encontrada.
+20. Preprints do medRxiv pelo Europe PMC: até 2 no fim da lista, etiqueta "Preprint",
+    "sem revisão por pares"; id "PPR…" no lugar do PMID; já publicados em revista ficam de fora.
 Regras fixas da síntese: nunca dar conduta; sempre terminar lembrando que a
 decisão clínica é do médico; só citar PMIDs recebidos da busca.
-Próxima etapa: diretrizes brasileiras (sociedades e PCDT), depois Semantic Scholar e arXiv.
+Próxima etapa: PCDT do Ministério da Saúde, depois Semantic Scholar.
 v2 (não fazer agora): alertas de novos artigos, comparar dois artigos, pastas
 de artigos salvos.
 

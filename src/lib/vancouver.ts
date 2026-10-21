@@ -1,10 +1,12 @@
 import type { Article } from "@/types/article";
 import type { Turn } from "@/types/search";
 import { CLINICAL_DECISION_NOTE, markdownToPlainText } from "./answer-markdown";
+import { isPreprint } from "./article-links";
 
 /**
  * Referência no estilo Vancouver:
  * "Knowler WC, Barrett-Connor E, ..., et al. Título. N Engl J Med. 2002;346(6):393-403. PMID: 11832527."
+ * Preprint: "Silva JP, Costa A. Título. medRxiv [Preprint]. 2025. doi: 10.1101/…"
  */
 export function formatVancouver(article: Article): string {
   const authors =
@@ -20,6 +22,10 @@ export function formatVancouver(article: Article): string {
   }
 
   const title = article.title.replace(/\.$/, "");
+  if (isPreprint(article)) {
+    const id = article.doi ? `doi: ${article.doi}.` : `Europe PMC: ${article.pmid}.`;
+    return [authors, `${title}.`, "medRxiv [Preprint].", article.year && `${article.year}.`, id].filter(Boolean).join(" ");
+  }
   return [authors, `${title}.`, `${article.journal}.`, locator && `${locator}.`, `PMID: ${article.pmid}.`]
     .filter(Boolean)
     .join(" ");

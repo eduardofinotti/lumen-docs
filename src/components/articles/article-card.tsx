@@ -1,5 +1,5 @@
 import { ChevronDown, ExternalLink } from "lucide-react";
-import { fullTextUrl } from "@/lib/article-links";
+import { fullTextUrl, isPreprint } from "@/lib/article-links";
 import { formatAuthors } from "@/lib/evidence";
 import { cn } from "@/lib/utils";
 import type { Article, ArticleSummary } from "@/types/article";
@@ -10,6 +10,7 @@ const linkLabels = {
   "PubMed Central": "Ler o texto completo (PubMed Central)",
   Revista: "Ver na revista",
   PubMed: "Ver no PubMed",
+  medRxiv: "Ver no medRxiv",
 } as const;
 
 const sampleFormat = new Intl.NumberFormat("pt-BR");
@@ -102,7 +103,11 @@ export function ArticleCard({
                 <span className="sr-only">Amostra: {sampleFormat.format(article.summary.amostra)} participantes</span>
               </span>
             )}
-            <span className="font-mono text-code text-ink-secondary">PMID {article.pmid}</span>
+            {isPreprint(article) ? (
+              <span className="text-body-sm text-ink-secondary">Sem revisão por pares</span>
+            ) : (
+              <span className="font-mono text-code text-ink-secondary">PMID {article.pmid}</span>
+            )}
           </div>
           {article.retracted && (
             <p className="text-body-sm text-danger">

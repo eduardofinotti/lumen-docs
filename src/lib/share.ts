@@ -1,6 +1,7 @@
 import type { Article } from "@/types/article";
 import type { Turn } from "@/types/search";
 import { CLINICAL_DECISION_NOTE } from "./answer-markdown";
+import { articleUrl, isPreprint } from "./article-links";
 import { strengthText } from "./vancouver";
 
 /** Acima disso o WhatsApp Web descarta o texto e manda só o link. */
@@ -22,7 +23,8 @@ function shortReference(n: number, a: Article): string {
   const source = [a.journal, a.year].filter(Boolean).join(" ");
   let title = a.title.replace(/\.$/, "");
   if (title.length > MAX_TITLE) title = `${title.slice(0, MAX_TITLE).replace(/\s+\S*$/, "")}…`;
-  return `[${n}] ${title}.${source ? ` ${source}.` : ""} https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/${a.retracted ? " (artigo retratado)" : ""}`;
+  const note = a.retracted ? " (artigo retratado)" : isPreprint(a) ? " (preprint, sem revisão por pares)" : "";
+  return `[${n}] ${title}.${source ? ` ${source}.` : ""} ${articleUrl(a)}${note}`;
 }
 
 /**
