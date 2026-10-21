@@ -29,9 +29,13 @@ const BRAZIL_FILTER = [
   "brazil*[ti]", "brasil*[ti]",
 ].join(" OR ");
 
-/** A busca do tema restrita a diretrizes e consensos de origem brasileira. */
+/**
+ * A busca do tema restrita a diretrizes e consensos de origem brasileira.
+ * Sem o filtro de humanos: diretriz recente ainda não tem MeSH e sumiria da busca.
+ */
 export function brazilianGuidelineQuery(topicQuery: string): string {
-  return `(${topicQuery}) AND (${GUIDELINE_FILTER}) AND (${BRAZIL_FILTER})`;
+  const topic = topicQuery.replace(/\s+AND\s+humans\[MeSH Terms\]/gi, "").trim();
+  return `(${topic}) AND (${GUIDELINE_FILTER}) AND (${BRAZIL_FILTER})`;
 }
 
 /** Diretriz envelhece: com "qualquer data", só os últimos 10 anos. */

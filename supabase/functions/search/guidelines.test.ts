@@ -9,6 +9,12 @@ describe("brazilianGuidelineQuery", () => {
     expect(q).toContain('"Arq Bras Cardiol"[ta]');
     expect(q).toContain('"Sociedade Brasileira"[ad]');
   });
+
+  test("tira o filtro de humanos: diretriz recente ainda não tem MeSH", () => {
+    const q = brazilianGuidelineQuery('("Dengue"[MeSH Terms] OR dengue[Title/Abstract]) AND humans[MeSH Terms]');
+    expect(q.startsWith('(("Dengue"[MeSH Terms] OR dengue[Title/Abstract])) AND (')).toBe(true);
+    expect(q).not.toContain("humans");
+  });
 });
 
 describe("guidelineDays", () => {
