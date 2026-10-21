@@ -3,7 +3,7 @@
 import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { shareTarget } from "@/lib/share";
+import { PUBLIC_SITE_URL, shareTarget } from "@/lib/share";
 
 /** Envia o texto da resposta: menu de compartilhar do celular ou WhatsApp no computador. */
 export function ShareButton({ text }: { text: (siteUrl: string) => string }) {
@@ -16,7 +16,7 @@ export function ShareButton({ text }: { text: (siteUrl: string) => string }) {
   }, [copied]);
 
   async function share() {
-    const message = text(window.location.origin);
+    const message = text(PUBLIC_SITE_URL);
     const target = shareTarget({
       canShare: typeof navigator.share === "function",
       touch: window.matchMedia("(pointer: coarse)").matches,

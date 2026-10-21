@@ -8,6 +8,9 @@ const MAX_OPENING = 600;
 const MAX_REFERENCES = 3;
 const MAX_TITLE = 110;
 
+/** Endereço público do Lúmen no fim da mensagem (mesmo enviando do localhost). */
+export const PUBLIC_SITE_URL = "https://lumen-docs-gold.vercel.app";
+
 const whatsappBold = (text: string) => text.replace(/\*\*(.+?)\*\*/g, "*$1*");
 
 /** Números citados ([n]) num texto, na ordem e sem repetir. */
