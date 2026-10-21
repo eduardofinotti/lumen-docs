@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { isRetracted, splitConclusion } from "./answer.ts";
+import { isRetracted, publicationTypesOf, splitConclusion, titleOf } from "./answer.ts";
 
 describe("splitConclusion", () => {
   const body = "A metformina reduziu eventos [1].\n\n**Lacunas:** sem dados em idosos.\n\nA decisão clínica é do médico.";
@@ -62,5 +62,27 @@ describe("isRetracted", () => {
   test("artigo comum, ou o próprio aviso de retratação, não conta", () => {
     expect(isRetracted(`<PublicationType>Randomized Controlled Trial</PublicationType>`)).toBe(false);
     expect(isRetracted(`<PublicationType>Retraction of Publication</PublicationType><CommentsCorrections RefType="RetractionOf">`)).toBe(false);
+  });
+});
+
+describe("publicationTypesOf", () => {
+  test("lê todos os tipos sem confundir com a tag da lista", () => {
+    const block = `<PublicationTypeList><PublicationType UI="D016446">Consensus Statement</PublicationType>\n<PublicationType UI="D016428">Journal Article</PublicationType></PublicationTypeList>`;
+    expect(publicationTypesOf(block)).toEqual(["Consensus Statement", "Journal Article"]);
+  });
+});
+
+describe("titleOf", () => {
+  test("usa o título em inglês quando existe", () => {
+    expect(titleOf("<ArticleTitle>Heart failure guideline.</ArticleTitle><VernacularTitle>Diretriz.</VernacularTitle>")).toBe("Heart failure guideline.");
+  });
+
+  test("artigo só em português: usa o título original no lugar de [Not Available]", () => {
+    expect(titleOf("<ArticleTitle>[Not Available].</ArticleTitle><VernacularTitle>Diretriz Brasileira de Insuficiência Cardíaca.</VernacularTitle>"))
+      .toBe("Diretriz Brasileira de Insuficiência Cardíaca.");
+  });
+
+  test("tira as tags internas e decodifica entidades", () => {
+    expect(titleOf("<ArticleTitle>Efeito do <i>H. pylori</i> em K&#xf8;ber</ArticleTitle>")).toBe("Efeito do H. pylori em Køber");
   });
 });
