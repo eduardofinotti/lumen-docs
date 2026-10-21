@@ -45,6 +45,20 @@ export function preprintDays(dateRange: "1y" | "5y" | "all"): number {
   return dateRange === "1y" ? 365 : 1826;
 }
 
+/**
+ * Registros de uma resposta da busca. O Europe PMC às vezes responde 200 com "errMsg" e sem resultList
+ * quando está fora do ar: isso vira erro (para tentar de novo), não "nenhum preprint".
+ */
+export function readEuropePmcResponse(body: unknown): EuropePmcRecord[] {
+  const j = (typeof body === "object" && body !== null ? body : {}) as {
+    errMsg?: string;
+    resultList?: { result?: EuropePmcRecord[] };
+  };
+  if (j.errMsg) throw new Error(`Europe PMC: ${j.errMsg}`);
+  if (!Array.isArray(j.resultList?.result)) throw new Error("Europe PMC: resposta sem resultList");
+  return j.resultList.result;
+}
+
 const strip = (html: string) => decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 
 /** Registro do Europe PMC como artigo; null se já saiu em revista (está no PubMed) ou se falta título ou resumo. */

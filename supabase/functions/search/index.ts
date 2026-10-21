@@ -13,7 +13,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 import { decodeEntities, isRetracted, publicationTypesOf, splitConclusion, titleOf, type EvidenceStrength } from "./answer.ts";
 import { brazilianGuidelineQuery, guidelineDays, isBrazilianGuideline, mergeWithGuidelines } from "./guidelines.ts";
 import { caseReportQuery, topicQueryFor } from "./case-reports.ts";
-import { parsePreprint, preprintDays, toEuropePmcQuery, withPreprints, type EuropePmcRecord, type Preprint } from "./preprints.ts";
+import { parsePreprint, preprintDays, readEuropePmcResponse, toEuropePmcQuery, withPreprints, type Preprint } from "./preprints.ts";
 import { buildHistory, isStalePending, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
 import { CONVERSATION_NOTE, SYSTEM_QUERY, SYSTEM_ROUTER, SYSTEM_SUMMARY, SYSTEM_SYNTHESIS } from "./prompts.ts";
 
@@ -465,14 +465,26 @@ async function esearch(term: string, days: number | null, retmax: number): Promi
   return (j.esearchresult?.idlist ?? []) as string[];
 }
 
-/** Preprints do medRxiv no Europe PMC (sem chave). Já publicados em revista ficam de fora. */
+/**
+ * Preprints do medRxiv no Europe PMC (sem chave). Já publicados em revista ficam de fora.
+ * O serviço cai com frequência: até 3 tentativas, cada uma com 5 s, antes de seguir sem preprints.
+ */
 async function searchPreprints(query: string): Promise<Preprint[]> {
   const params = new URLSearchParams({ query, format: "json", resultType: "core", pageSize: "6" });
-  const r = await fetch(`${EUROPE_PMC}?${params}`, { signal: AbortSignal.timeout(8000) });
-  if (!r.ok) throw new Error(`Europe PMC ${r.status}`);
-  const j = await r.json();
-  const records = (j.resultList?.result ?? []) as EuropePmcRecord[];
-  return records.map(parsePreprint).filter((p): p is Preprint => p !== null);
+  let lastError: unknown;
+  for (let i = 0; i < 3; i++) {
+    if (i > 0) await new Promise((res) => setTimeout(res, 500 * i));
+    try {
+      const r = await fetch(`${EUROPE_PMC}?${params}`, { signal: AbortSignal.timeout(5000) });
+      const records = readEuropePmcResponse(await r.json().catch(() => null));
+      const preprints = records.map(parsePreprint).filter((p): p is Preprint => p !== null);
+      console.log(`preprints: ${records.length} encontrados, ${preprints.length} sem versão publicada`);
+      return preprints;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
 }
 
 async function efetch(pmids: string[]): Promise<Article[]> {

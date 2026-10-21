@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parsePreprint, preprintDays, toEuropePmcQuery, withPreprints, type EuropePmcRecord } from "./preprints.ts";
+import { parsePreprint, preprintDays, readEuropePmcResponse, toEuropePmcQuery, withPreprints, type EuropePmcRecord } from "./preprints.ts";
 
 describe("toEuropePmcQuery", () => {
   const today = new Date("2026-10-21T12:00:00Z");
@@ -98,5 +98,23 @@ describe("withPreprints", () => {
 
   test("sem preprints, a lista fica igual", () => {
     expect(withPreprints([a("1"), a("2")], [], 12).map((x) => x.pmid)).toEqual(["1", "2"]);
+  });
+});
+
+describe("readEuropePmcResponse", () => {
+  test("devolve os registros da busca", () => {
+    const records = readEuropePmcResponse({ hitCount: 1, resultList: { result: [{ id: "PPR1", source: "PPR" }] } });
+    expect(records.map((r) => r.id)).toEqual(["PPR1"]);
+  });
+
+  test("busca sem resultado é lista vazia, não erro", () => {
+    expect(readEuropePmcResponse({ hitCount: 0, resultList: { result: [] } })).toEqual([]);
+  });
+
+  test("serviço fora do ar com status 200 vira erro (para tentar de novo), não lista vazia", () => {
+    expect(() => readEuropePmcResponse({ errMsg: "Search service is temporarily unavailable. Please retry later." }))
+      .toThrow("temporarily unavailable");
+    expect(() => readEuropePmcResponse({ version: "6.9" })).toThrow();
+    expect(() => readEuropePmcResponse(null)).toThrow();
   });
 });
