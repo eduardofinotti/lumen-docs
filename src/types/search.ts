@@ -39,6 +39,8 @@ export interface Turn {
   answerMd: string;
   conclusion: Conclusion | null;
   sources: Article[];
+  /** A busca procurou diretrizes brasileiras (false em respostas antigas ou que reaproveitaram artigos). */
+  guidelinesSearched: boolean;
   /** Voto do médico nesta resposta; null sem voto. */
   feedback: Feedback | null;
   createdAt: string;

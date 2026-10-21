@@ -1,4 +1,5 @@
 import { ArticleCard } from "@/components/articles/article-card";
+import { showNoGuidelineNotice } from "@/lib/guidelines";
 import type { Turn } from "@/types/search";
 
 /** Estado de "salvo" dos artigos: a pesquisa de origem e os PMIDs já salvos pelo médico. */
@@ -28,20 +29,25 @@ export function SourcesList({
   save: SaveContext;
 }) {
   return (
-    <ol className="space-y-4">
-      {turn.sources.map((article, i) => (
-        <li key={article.pmid}>
-          <ArticleCard
-            article={article}
-            index={i + 1}
-            highlighted={highlighted === i + 1}
-            anchorId={variant === "panel" ? anchorFor(turn, i + 1) : null}
-            anchorKey={`${turn.position}-${i + 1}`}
-            save={{ searchId: save.searchId, saved: save.pmids.has(article.pmid) }}
-          />
-        </li>
-      ))}
-    </ol>
+    <>
+      <ol className="space-y-4">
+        {turn.sources.map((article, i) => (
+          <li key={article.pmid}>
+            <ArticleCard
+              article={article}
+              index={i + 1}
+              highlighted={highlighted === i + 1}
+              anchorId={variant === "panel" ? anchorFor(turn, i + 1) : null}
+              anchorKey={`${turn.position}-${i + 1}`}
+              save={{ searchId: save.searchId, saved: save.pmids.has(article.pmid) }}
+            />
+          </li>
+        ))}
+      </ol>
+      {showNoGuidelineNotice(turn) && (
+        <p className="mt-4 text-body-sm text-ink-secondary">Nenhuma diretriz brasileira sobre este tema encontrada no PubMed.</p>
+      )}
+    </>
   );
 }
 

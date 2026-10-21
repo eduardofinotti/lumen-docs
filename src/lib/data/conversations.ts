@@ -101,6 +101,7 @@ function demoEntryToConversation(entry: DemoConversationEntry): Conversation {
         answerMd: result.answerMd,
         conclusion: result.conclusion,
         sources: result.sources,
+        guidelinesSearched: false,
         // A demonstração não guarda votos.
         feedback: null,
         createdAt: t.createdAt,
@@ -154,6 +155,7 @@ interface TurnRow {
   conclusion: string | null;
   evidence_strength: string | null;
   evidence_reason: string | null;
+  guidelines_searched: boolean | null;
   created_at: string;
   sources: SourceRow[] | null;
   turn_feedback: { helpful: boolean; reason: string | null }[] | null;
@@ -171,7 +173,7 @@ interface ConversationRow {
 const CONVERSATION_SELECT =
   "id, question, date_range, created_at, updated_at, " +
   "search_turns (id, position, question, standalone_question, status, answer_md, " +
-  "conclusion, evidence_strength, evidence_reason, created_at, " +
+  "conclusion, evidence_strength, evidence_reason, guidelines_searched, created_at, " +
   "sources (position, pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, evidence_label, summary_pt, retracted), " +
   "turn_feedback (helpful, reason))";
 
@@ -185,6 +187,7 @@ function rowToTurn(row: TurnRow): Turn {
     answerMd: withoutClinicalNote(row.answer_md ?? ""),
     conclusion: parseConclusion(row.conclusion, row.evidence_strength, row.evidence_reason),
     sources: [...(row.sources ?? [])].sort((a, b) => a.position - b.position).map(sourceRowToArticle),
+    guidelinesSearched: row.guidelines_searched === true,
     feedback: parseFeedback(row.turn_feedback?.[0]),
     createdAt: row.created_at,
   };

@@ -13,6 +13,7 @@ const turn: Turn = {
   answerMd: "A metformina **reduziu** a incidência [1].",
   conclusion: { text: "Reduz a progressão [1].", strength: "alta", reason: "2 ECRs" },
   sources: mockResults.metformina.sources.slice(0, 1),
+  guidelinesSearched: false,
   feedback: null,
   createdAt: "2026-10-20T12:00:00Z",
 };

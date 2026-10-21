@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
     };
     /** Grava o turno e marca a atividade da conversa. */
     const saveTurn = async (fields: {
-      status: string; answer_md?: string; pubmed_query: string | null;
+      status: string; answer_md?: string; pubmed_query: string | null; guidelines_searched?: boolean | null;
       conclusion?: string | null; evidence_strength?: EvidenceStrength | null; evidence_reason?: string | null;
     }) => {
       await admin.from("search_turns").update(fields).eq("id", id);
@@ -221,13 +221,17 @@ Deno.serve(async (req) => {
     // 4. Artigos: busca nova ou reaproveitados --------------------------------
     let articles: Article[];
     let pubmedQuery: string | null = null;
+    let guidelinesSearched: boolean | null = null;
 
     if (decision.action === "search") {
       pubmedQuery = decision.pubmedQuery ?? await ask(anthropic, CALLS.query, standalone);
       // Busca extra só por diretrizes brasileiras; se falhar, segue com a geral.
       const [generalIds, guidelineIds] = await Promise.all([
         esearch(pubmedQuery, rangeDays(dateRange), MAX_ARTICLES),
-        esearch(brazilianGuidelineQuery(pubmedQuery), guidelineDays(dateRange), 6).catch((e) => {
+        esearch(brazilianGuidelineQuery(pubmedQuery), guidelineDays(dateRange), 6).then((ids) => {
+          guidelinesSearched = true;
+          return ids;
+        }, (e) => {
           console.error("busca de diretrizes brasileiras falhou", e);
           return [] as string[];
         }),
@@ -289,7 +293,7 @@ Deno.serve(async (req) => {
     })));
     if (sourcesErr) throw new Error(`não gravou as fontes: ${sourcesErr.message}`);
     await saveTurn({
-      status: "done", answer_md: answerMd, pubmed_query: pubmedQuery,
+      status: "done", answer_md: answerMd, pubmed_query: pubmedQuery, guidelines_searched: guidelinesSearched,
       conclusion, evidence_strength: strength, evidence_reason: reason,
     });
 
