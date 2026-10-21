@@ -8,6 +8,7 @@ const evidenceLevels: EvidenceLevel[] = [
   "caso-controle",
   "relato-de-caso",
   "diretriz",
+  "diretriz-brasileira",
   "outro",
 ];
 
@@ -81,6 +82,7 @@ const evidenceByLabel: Record<string, EvidenceLevel> = {
   "caso-controle": "caso-controle",
   "relato de caso": "relato-de-caso",
   diretriz: "diretriz",
+  "diretriz brasileira": "diretriz-brasileira",
 };
 
 const summaryLines: [Exclude<keyof ArticleSummary, "amostra">, RegExp][] = [

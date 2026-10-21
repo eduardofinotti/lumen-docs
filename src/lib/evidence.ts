@@ -7,6 +7,7 @@ export const evidenceLabels: Record<EvidenceLevel, string> = {
   "caso-controle": "Caso-controle",
   "relato-de-caso": "Relato de caso",
   diretriz: "Diretriz",
+  "diretriz-brasileira": "Diretriz brasileira",
   outro: "Outro",
 };
 
@@ -16,6 +17,7 @@ export const evidenceStrength: Record<EvidenceLevel, EvidenceStrength> = {
   coorte: "media",
   "caso-controle": "media",
   diretriz: "media",
+  "diretriz-brasileira": "media",
   "relato-de-caso": "baixa",
   outro: "baixa",
 };

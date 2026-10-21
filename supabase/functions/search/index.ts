@@ -1,6 +1,6 @@
 // Lúmen · Edge Function `search`
 // Uma pesquisa é uma conversa (`searches`) com turnos (`search_turns`); cada turno tem suas fontes.
-// Primeira pergunta: query PubMed (Claude) → esearch → efetch → síntese (Claude) → banco.
+// Primeira pergunta: query PubMed (Claude) → esearch (geral + diretrizes brasileiras) → efetch → síntese (Claude) → banco.
 // Continuação: o roteador (Claude) reescreve a pergunta e decide entre busca nova e reaproveitar
 // os artigos já encontrados; depois segue o mesmo caminho.
 // Deploy: supabase functions deploy search
@@ -8,7 +8,8 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
-import { isRetracted, splitConclusion, type EvidenceStrength } from "./answer.ts";
+import { decodeEntities, isRetracted, publicationTypesOf, splitConclusion, titleOf, type EvidenceStrength } from "./answer.ts";
+import { brazilianGuidelineQuery, guidelineDays, isBrazilianGuideline, mergeWithGuidelines } from "./guidelines.ts";
 import { buildHistory, isStalePending, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
 import { CONVERSATION_NOTE, SYSTEM_QUERY, SYSTEM_ROUTER, SYSTEM_SUMMARY, SYSTEM_SYNTHESIS } from "./prompts.ts";
 
@@ -16,6 +17,7 @@ const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const MODEL = "claude-sonnet-5-5";
 const MAX_ARTICLES = 12;
 const MAX_TURNS = 20;
+const BR_GUIDELINE = "Diretriz brasileira";
 
 // Claude Sonnet 5.5 pensa por padrão (thinking adaptativo) e esse raciocínio conta no max_tokens,
 // por isso os limites têm folga. O esforço controla quanto ele pensa: baixo para tarefas curtas
@@ -222,14 +224,26 @@ Deno.serve(async (req) => {
 
     if (decision.action === "search") {
       pubmedQuery = decision.pubmedQuery ?? await ask(anthropic, CALLS.query, standalone);
-      const pmids = await esearch(pubmedQuery, dateRange);
+      // Busca extra só por diretrizes brasileiras; se falhar, segue com a geral.
+      const [generalIds, guidelineIds] = await Promise.all([
+        esearch(pubmedQuery, rangeDays(dateRange), MAX_ARTICLES),
+        esearch(brazilianGuidelineQuery(pubmedQuery), guidelineDays(dateRange), 6).catch((e) => {
+          console.error("busca de diretrizes brasileiras falhou", e);
+          return [] as string[];
+        }),
+      ]);
+      const pmids = [...new Set([...guidelineIds, ...generalIds])];
       if (pmids.length === 0) {
         await saveTurn({ status: "no_evidence", pubmed_query: pubmedQuery });
         return json({ searchId: sid, turnId: id, status: "no_evidence", standaloneQuestion: shownStandalone });
       }
       // Artigo que já apareceu na conversa reaproveita o resumo em português.
       const knownSummaries = new Map(known.filter((r) => r.summary_pt).map((r) => [r.pmid, r.summary_pt]));
-      articles = (await efetch(pmids)).map((a) => ({ ...a, summaryPt: knownSummaries.get(a.pmid) ?? null }));
+      const fetched = new Map<string, Article>((await efetch(pmids))
+        .map((a) => [a.pmid, { ...a, summaryPt: knownSummaries.get(a.pmid) ?? null }]));
+      const pick = (ids: string[]) => ids.map((p) => fetched.get(p)).filter((a): a is Article => a !== undefined);
+      // A busca de diretrizes traz candidatos; só fica no topo o que é de fato diretriz brasileira.
+      articles = mergeWithGuidelines(pick(guidelineIds).filter((a) => a.evidenceLabel === BR_GUIDELINE), pick(generalIds), MAX_ARTICLES);
     } else {
       const turnsById = new Map(previous.map((t) => [t.id, t]));
       const pmids = selectReuseArticles(known.map((r) => {
@@ -242,7 +256,7 @@ Deno.serve(async (req) => {
 
     // 5. Síntese em português ---------------------------------------------
     const context = articles.map((a, i) =>
-      `[${i + 1}] PMID ${a.pmid}${a.retracted ? "\nATENÇÃO: ARTIGO RETRATADO" : ""}\nTítulo: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nPeriódico/ano: ${a.journal} ${a.year ?? ""}\nResumo: ${a.abstract || "(sem resumo)"}`
+      `[${i + 1}] PMID ${a.pmid}${a.retracted ? "\nATENÇÃO: ARTIGO RETRATADO" : ""}\nTítulo: ${a.title}\nTipo: ${a.evidenceLabel === BR_GUIDELINE ? "DIRETRIZ BRASILEIRA; " : ""}${a.publicationTypes.join(", ")}\nPeriódico/ano: ${a.journal} ${a.year ?? ""}\nResumo: ${a.abstract || "(sem resumo)"}`
     ).join("\n\n");
 
     const synthesis = await ask(anthropic, CALLS.synthesis,
@@ -364,11 +378,13 @@ async function fetchRetry(url: string, tries = 3): Promise<Response> {
   throw new Error("NCBI indisponível");
 }
 
-async function esearch(term: string, dateRange: string): Promise<string[]> {
-  const extra: Record<string, string> = { db: "pubmed", term, retmode: "json", retmax: String(MAX_ARTICLES), sort: "relevance" };
-  if (dateRange === "1y") extra.reldate = "365";
-  if (dateRange === "5y") extra.reldate = "1826";
-  if (extra.reldate) extra.datetype = "pdat";
+function rangeDays(dateRange: DateRange): number | null {
+  return dateRange === "1y" ? 365 : dateRange === "5y" ? 1826 : null;
+}
+
+async function esearch(term: string, days: number | null, retmax: number): Promise<string[]> {
+  const extra: Record<string, string> = { db: "pubmed", term, retmode: "json", retmax: String(retmax), sort: "relevance" };
+  if (days) Object.assign(extra, { reldate: String(days), datetype: "pdat" });
   const r = await fetchRetry(`${EUTILS}/esearch.fcgi?${ncbiParams(extra)}`);
   const j = await r.json();
   return (j.esearchresult?.idlist ?? []) as string[];
@@ -386,7 +402,7 @@ function parseArticle(xml: string, pmid: string): Article | null {
   const block = xml.split("<PubmedArticle>").find((b) => b.match(/<PMID[^>]*>(\d+)<\/PMID>/)?.[1] === pmid);
   if (!block) return null;
   const g = (re: RegExp) => decodeEntities((block.match(re)?.[1] ?? "").replace(/<[^>]+>/g, "").trim());
-  const title = g(/<ArticleTitle>([\s\S]*?)<\/ArticleTitle>/);
+  const title = titleOf(block);
   // Abreviação ISO ("N Engl J Med"), a usada no Vancouver; o nome completo fica de reserva.
   const journal = g(/<ISOAbbreviation>([\s\S]*?)<\/ISOAbbreviation>/) || g(/<Title>([\s\S]*?)<\/Title>/);
   const year = Number(g(/<PubDate>[\s\S]*?<Year>(\d{4})<\/Year>/)) || null;
@@ -403,19 +419,12 @@ function parseArticle(xml: string, pmid: string): Article | null {
   const ids = block.match(/<PubmedData>[\s\S]*?<ArticleIdList>([\s\S]*?)<\/ArticleIdList>/)?.[1] ?? "";
   const pmcid = ids.match(/<ArticleId IdType="pmc">(PMC\d+)<\/ArticleId>/)?.[1] ?? null;
   const doi = ids.match(/<ArticleId IdType="doi">([\s\S]*?)<\/ArticleId>/)?.[1]?.trim() || null;
-  const publicationTypes = [...block.matchAll(/<PublicationType[^>]*>(.*?)<\/PublicationType>/g)].map((m) => m[1]);
-  const { evidenceLevel, evidenceLabel } = classify(publicationTypes, title);
+  const publicationTypes = publicationTypesOf(block);
+  const { evidenceLevel, evidenceLabel } = isBrazilianGuideline({ publicationTypes, title, journal })
+    ? { evidenceLevel: "mid" as const, evidenceLabel: BR_GUIDELINE }
+    : classify(publicationTypes, title);
   return { pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, publicationTypes, abstract,
     url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`, evidenceLevel, evidenceLabel, retracted: isRetracted(block) };
-}
-
-/** O XML do PubMed traz acentos como entidades ("K&#xf8;ber"). */
-function decodeEntities(text: string): string {
-  return text
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
-    .replace(/&amp;/g, "&");
 }
 
 function classify(types: string[], title: string): Pick<Article, "evidenceLevel" | "evidenceLabel"> {

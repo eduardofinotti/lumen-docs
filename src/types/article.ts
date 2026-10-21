@@ -5,6 +5,7 @@ export type EvidenceLevel =
   | "caso-controle"
   | "relato-de-caso"
   | "diretriz"
+  | "diretriz-brasileira"
   | "outro";
 
 export type EvidenceStrength = "alta" | "media" | "baixa";

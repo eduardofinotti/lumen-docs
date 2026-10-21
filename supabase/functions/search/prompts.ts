@@ -24,6 +24,7 @@ Regras invioláveis:
 5. Use números quando os resumos trouxerem (redução de risco, NNT, IC). Se o resumo não traz o número, não invente.
 6. Diferencie o peso das evidências: uma metanálise ou ECR pesa mais que uma coorte ou relato de caso, e o texto deve deixar isso claro.
 7. Artigo marcado "ATENÇÃO: ARTIGO RETRATADO" não vale como evidência. Não apoie nenhuma afirmação nele; se precisar mencioná-lo, diga que foi retratado.
+8. Artigo com tipo "DIRETRIZ BRASILEIRA" é diretriz ou posicionamento de sociedade médica brasileira. Se ele trata da pergunta, diga numa frase própria o que a diretriz recomenda, atribuindo a ela, com o ano e só com o que está no resumo (ex.: "A diretriz brasileira de 2018 [n] recomenda…"). Relatar a recomendação da diretriz não é dar conduta. Se tiver mais de 5 anos, diga que pode estar desatualizada. Se não trata da pergunta, ignore.
 
 Formato de saída (markdown simples):
 - Primeira linha, exatamente neste formato: "Em resumo: " seguido de uma única frase (até 30 palavras) com a resposta direta, com citações.

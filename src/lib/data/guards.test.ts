@@ -30,6 +30,11 @@ describe("sourceRowToArticle", () => {
     expect(article.pmcid).toBeUndefined();
     expect(article.doi).toBeUndefined();
   });
+
+  test("diretriz brasileira tem etiqueta própria", () => {
+    expect(sourceRowToArticle({ ...row, evidence_label: "Diretriz brasileira" }).evidence).toBe("diretriz-brasileira");
+    expect(sourceRowToArticle({ ...row, evidence_label: "Diretriz" }).evidence).toBe("diretriz");
+  });
 });
 
 describe("artigo retratado", () => {
