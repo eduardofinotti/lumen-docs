@@ -131,6 +131,17 @@ export function sourceRowToArticle(row: SourceRow): Article {
   };
 }
 
+/** Linha de `case_reports`: as mesmas colunas da fonte, sem a etiqueta (é sempre relato de caso). */
+export type CaseReportRow = Omit<SourceRow, "evidence_label">;
+
+/** Relatos de caso de uma resposta: null se o médico ainda não pediu; lista (talvez vazia) depois. */
+export function parseCaseReports(requestedAt: string | null, rows: CaseReportRow[] | null): Article[] | null {
+  if (!requestedAt) return null;
+  return [...(rows ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map((r) => sourceRowToArticle({ ...r, evidence_label: "Relato de caso" }));
+}
+
 const strengths: AnswerStrength[] = ["alta", "moderada", "baixa", "insuficiente"];
 
 /** Colunas `conclusion`, `evidence_strength` e `evidence_reason` de `search_turns`. */

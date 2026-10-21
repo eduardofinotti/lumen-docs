@@ -4,6 +4,7 @@
 // (Europe PMC) → efetch → síntese (Claude) → banco.
 // Continuação: o roteador (Claude) reescreve a pergunta e decide entre busca nova e reaproveitar
 // os artigos já encontrados; depois segue o mesmo caminho.
+// Relatos de caso ({ searchId, caseReportsTurnId }): busca só "Case Reports" no tema da resposta, sem síntese.
 // Deploy: supabase functions deploy search
 // Secrets: ANTHROPIC_API_KEY, NCBI_API_KEY, NCBI_EMAIL (SUPABASE_URL e SERVICE_ROLE já existem no runtime)
 
@@ -11,6 +12,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 import { decodeEntities, isRetracted, publicationTypesOf, splitConclusion, titleOf, type EvidenceStrength } from "./answer.ts";
 import { brazilianGuidelineQuery, guidelineDays, isBrazilianGuideline, mergeWithGuidelines } from "./guidelines.ts";
+import { caseReportQuery, topicQueryFor } from "./case-reports.ts";
 import { parsePreprint, preprintDays, toEuropePmcQuery, withPreprints, type EuropePmcRecord, type Preprint } from "./preprints.ts";
 import { buildHistory, isStalePending, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
 import { CONVERSATION_NOTE, SYSTEM_QUERY, SYSTEM_ROUTER, SYSTEM_SUMMARY, SYSTEM_SYNTHESIS } from "./prompts.ts";
@@ -20,6 +22,7 @@ const EUROPE_PMC = "https://www.ebi.ac.uk/europepmc/webservices/rest/search";
 const MODEL = "claude-sonnet-5-5";
 const MAX_ARTICLES = 12;
 const MAX_TURNS = 20;
+const MAX_CASE_REPORTS = 6;
 const BR_GUIDELINE = "Diretriz brasileira";
 
 // Claude Sonnet 5.5 pensa por padrão (thinking adaptativo) e esse raciocínio conta no max_tokens,
@@ -77,7 +80,7 @@ type SourceRow = {
   retracted: boolean | null;
 };
 
-type Body = { question?: string; dateRange?: DateRange; searchId?: string; retryTurnId?: string };
+type Body = { question?: string; dateRange?: DateRange; searchId?: string; retryTurnId?: string; caseReportsTurnId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -106,6 +109,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json() as Body;
     const followUp = Boolean(body.searchId);
+    if (body.caseReportsTurnId) {
+      return await findCaseReports(admin, user.id, body.searchId ?? "", body.caseReportsTurnId, debit, refund);
+    }
 
     // 2. Conversa e turno ----------------------------------------------------
     let dateRange: DateRange = body.dateRange ?? "5y";
@@ -279,17 +285,7 @@ Deno.serve(async (req) => {
 
     // 6. Resumo em português de cada artigo novo (em paralelo, curto) ------
     // Um resumo que falha (inclusive por recusa) não derruba a pesquisa: o card fica sem resumo.
-    const summaries = await Promise.all(articles.map(async (a) => {
-      if (a.summaryPt) return a.summaryPt;
-      if (!a.abstract) return null;
-      try {
-        return await ask(anthropic, CALLS.summary,
-          `Título: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nResumo original:\n${a.abstract}`);
-      } catch (e) {
-        console.error(`resumo do PMID ${a.pmid} falhou`, e);
-        return null;
-      }
-    }));
+    const summaries = await Promise.all(articles.map((a) => a.summaryPt ? a.summaryPt : summarize(anthropic, a)));
 
     // 7. Persistência --------------------------------------------------------
     const { error: sourcesErr } = await admin.from("sources").insert(articles.map((a, i) => ({
@@ -326,6 +322,73 @@ Deno.serve(async (req) => {
 });
 
 // ---------------------------------------------------------------------------
+type Admin = ReturnType<typeof createClient>;
+
+/**
+ * Relatos de caso de uma resposta (1 crédito). A coluna case_reports_at trava pedido duplo;
+ * se a busca falhar, ela volta a null e o crédito é devolvido.
+ */
+async function findCaseReports(
+  admin: Admin, userId: string, searchId: string, turnId: string,
+  debit: () => Promise<void>, refund: () => Promise<unknown>,
+): Promise<Response> {
+  const { data: search } = await admin.from("searches")
+    .select("id, date_range").eq("id", searchId).eq("user_id", userId).maybeSingle();
+  if (!search) throw new HttpError(404, "Pesquisa não encontrada.");
+  const { data: rows } = await admin.from("search_turns")
+    .select("id, position, status, pubmed_query, case_reports_at").eq("search_id", search.id);
+  const turns = (rows ?? []) as { id: string; position: number; status: string; pubmed_query: string | null; case_reports_at: string | null }[];
+  const target = turns.find((t) => t.id === turnId && t.status === "done");
+  const topic = target ? topicQueryFor(target.position, turns) : null;
+  if (!target || !topic) throw new HttpError(400, "Não foi possível buscar relatos de caso desta resposta.");
+  const done = () => json({ searchId: search.id, turnId: target.id, status: "done" });
+  if (target.case_reports_at) return done();
+
+  const { data: claimed } = await admin.from("search_turns")
+    .update({ case_reports_at: new Date().toISOString() }).eq("id", target.id).is("case_reports_at", null).select("id");
+  if (!claimed?.length) return done();
+  const release = () => admin.from("search_turns").update({ case_reports_at: null }).eq("id", target.id);
+  try {
+    await debit();
+  } catch (e) {
+    await release();
+    throw e;
+  }
+
+  try {
+    const pmids = await esearch(caseReportQuery(topic), rangeDays((search.date_range ?? "5y") as DateRange), MAX_CASE_REPORTS);
+    const reports = pmids.length > 0 ? await efetch(pmids) : [];
+    const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+    const summaries = await Promise.all(reports.map((a) => summarize(anthropic, a)));
+    if (reports.length > 0) {
+      const { error } = await admin.from("case_reports").insert(reports.map((a, i) => ({
+        turn_id: target.id, search_id: search.id, position: i + 1, pmid: a.pmid, title: a.title, authors: a.authors,
+        journal: a.journal, year: a.year, volume: a.volume, issue: a.issue, pages: a.pages, pmcid: a.pmcid, doi: a.doi,
+        abstract: a.abstract, summary_pt: summaries[i], retracted: a.retracted,
+      })));
+      if (error) throw new Error(`não gravou os relatos de caso: ${error.message}`);
+    }
+    return done();
+  } catch (e) {
+    console.error("relatos de caso falharam", e);
+    await release();
+    await refund();
+    throw new HttpError(500, "Não conseguimos buscar os relatos de caso. Tente de novo em instantes.");
+  }
+}
+
+/** Resumo em português de um artigo; null sem resumo original ou se falhar (o card fica sem resumo). */
+async function summarize(anthropic: Anthropic, a: Article): Promise<string | null> {
+  if (!a.abstract) return null;
+  try {
+    return await ask(anthropic, CALLS.summary,
+      `Título: ${a.title}\nTipo: ${a.publicationTypes.join(", ")}\nResumo original:\n${a.abstract}`);
+  } catch (e) {
+    console.error(`resumo do PMID ${a.pmid} falhou`, e);
+    return null;
+  }
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }

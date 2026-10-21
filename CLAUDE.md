@@ -52,6 +52,9 @@ Entorno
     (até 3 no topo, etiqueta "Diretriz brasileira"); aviso quando nenhuma é encontrada.
 20. Preprints do medRxiv pelo Europe PMC: até 2 no fim da lista, etiqueta "Preprint",
     "sem revisão por pares"; id "PPR…" no lugar do PMID; já publicados em revista ficam de fora.
+21. "Ver relatos de caso" depois da resposta: busca só "Case Reports" no tema (1 crédito,
+    devolvido se falhar), lista com resumo em português, sem nova síntese; fica guardada
+    na resposta (tabela case_reports).
 Regras fixas da síntese: nunca dar conduta; sempre terminar lembrando que a
 decisão clínica é do médico; só citar PMIDs recebidos da busca.
 Próxima etapa: PCDT do Ministério da Saúde, depois Semantic Scholar.

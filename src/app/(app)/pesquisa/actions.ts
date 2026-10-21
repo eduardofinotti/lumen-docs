@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { continueConversation, createConversation, type RunResult } from "@/lib/data/conversations";
+import { continueConversation, createConversation, findCaseReports, type RunResult } from "@/lib/data/conversations";
 import { saveFeedback } from "@/lib/data/feedback";
 import { isFeedbackReason } from "@/lib/data/guards";
 import { isDateRange } from "@/lib/date-range";
@@ -37,6 +37,15 @@ export async function continueSearch(searchId: string, question: string): Promis
 /** Refaz uma pergunta que deu erro, na mesma posição da conversa. */
 export async function retryTurn(searchId: string, turnId: string): Promise<RunResult> {
   const result = await continueConversation(searchId, "", turnId);
+  revalidatePath("/", "layout");
+  return result;
+}
+
+/** "Ver relatos de caso" de uma resposta. */
+export async function requestCaseReports(searchId: string, turnId: string): Promise<RunResult> {
+  if (!TURN_ID.test(searchId) || !TURN_ID.test(turnId)) return { ok: false, error: "Não foi possível buscar os relatos de caso." };
+  const result = await findCaseReports(searchId, turnId);
+  // Mostra os relatos e atualiza os créditos do cabeçalho.
   revalidatePath("/", "layout");
   return result;
 }

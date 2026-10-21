@@ -12,6 +12,7 @@ import { buildShareText } from "@/lib/share";
 import { buildCopyText } from "@/lib/vancouver";
 import type { Turn } from "@/types/search";
 import { AnswerFeedback } from "./answer-feedback";
+import { CaseReports } from "./case-reports";
 import { anchorFor, SourcesList, type SaveContext } from "./sources-panel";
 
 /** Balão com a pergunta do médico; numa continuação, mostra também como o Lúmen a entendeu. */
@@ -106,6 +107,8 @@ export function TurnBlock({
           </div>
 
           <AnswerFeedback key={turn.id} turnId={turn.id} initial={turn.feedback} />
+
+          <CaseReports turn={turn} searchId={save.searchId} />
 
           {count > 0 && (
             <details className="group mt-6 lg:hidden" data-turn-sources={turn.position}>

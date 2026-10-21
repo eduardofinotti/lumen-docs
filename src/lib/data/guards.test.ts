@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { parseConclusion, parseFeedback, parseSummary, sourceRowToArticle, type SourceRow } from "./guards";
+import {
+  parseCaseReports,
+  parseConclusion,
+  parseFeedback,
+  parseSummary,
+  sourceRowToArticle,
+  type CaseReportRow,
+  type SourceRow,
+} from "./guards";
 
 const row: SourceRow = {
   position: 1,
@@ -101,5 +109,24 @@ describe("parseFeedback", () => {
   test("motivo desconhecido é descartado; sem voto, null", () => {
     expect(parseFeedback({ helpful: false, reason: "xyz" })).toEqual({ helpful: false, reason: null });
     expect(parseFeedback(undefined)).toBeNull();
+  });
+});
+
+describe("parseCaseReports", () => {
+  const report: CaseReportRow = { ...row };
+  delete (report as Partial<SourceRow>).evidence_label;
+
+  test("ainda não pedidos: null (mostra o botão)", () => {
+    expect(parseCaseReports(null, null)).toBeNull();
+  });
+
+  test("pedidos e nenhum encontrado: lista vazia", () => {
+    expect(parseCaseReports("2026-10-21T12:00:00Z", [])).toEqual([]);
+  });
+
+  test("na ordem da posição, com a etiqueta de relato de caso", () => {
+    const list = parseCaseReports("2026-10-21T12:00:00Z", [{ ...report, position: 2, pmid: "2" }, { ...report, position: 1, pmid: "1" }]);
+    expect(list?.map((a) => a.pmid)).toEqual(["1", "2"]);
+    expect(list?.[0].evidence).toBe("relato-de-caso");
   });
 });

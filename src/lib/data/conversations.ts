@@ -9,7 +9,15 @@ import { mockResultKeyFor, mockResults, type MockResultKey } from "@/lib/mocks/r
 import { demoSeedConversations, type DemoConversationEntry, type DemoTurnEntry } from "@/lib/mocks/searches";
 import { createClient } from "@/lib/supabase/server";
 import type { Conversation, DateRange, SearchSummary, Turn } from "@/types/search";
-import { parseConclusion, parseFeedback, parseStatus, sourceRowToArticle, type SourceRow } from "./guards";
+import {
+  parseCaseReports,
+  parseConclusion,
+  parseFeedback,
+  parseStatus,
+  sourceRowToArticle,
+  type CaseReportRow,
+  type SourceRow,
+} from "./guards";
 import { effectiveStatus } from "./turn-status";
 
 export type RunResult = { ok: true; id: string; turnId: string } | { ok: false; error: string };
@@ -102,6 +110,7 @@ function demoEntryToConversation(entry: DemoConversationEntry): Conversation {
         conclusion: result.conclusion,
         sources: result.sources,
         guidelinesSearched: false,
+        caseReports: null,
         // A demonstração não guarda votos.
         feedback: null,
         createdAt: t.createdAt,
@@ -156,8 +165,10 @@ interface TurnRow {
   evidence_strength: string | null;
   evidence_reason: string | null;
   guidelines_searched: boolean | null;
+  case_reports_at: string | null;
   created_at: string;
   sources: SourceRow[] | null;
+  case_reports: CaseReportRow[] | null;
   turn_feedback: { helpful: boolean; reason: string | null }[] | null;
 }
 
@@ -173,8 +184,9 @@ interface ConversationRow {
 const CONVERSATION_SELECT =
   "id, question, date_range, created_at, updated_at, " +
   "search_turns (id, position, question, standalone_question, status, answer_md, " +
-  "conclusion, evidence_strength, evidence_reason, guidelines_searched, created_at, " +
+  "conclusion, evidence_strength, evidence_reason, guidelines_searched, case_reports_at, created_at, " +
   "sources (position, pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, evidence_label, summary_pt, retracted), " +
+  "case_reports (position, pmid, title, authors, journal, year, volume, issue, pages, pmcid, doi, summary_pt, retracted), " +
   "turn_feedback (helpful, reason))";
 
 function rowToTurn(row: TurnRow): Turn {
@@ -188,6 +200,7 @@ function rowToTurn(row: TurnRow): Turn {
     conclusion: parseConclusion(row.conclusion, row.evidence_strength, row.evidence_reason),
     sources: [...(row.sources ?? [])].sort((a, b) => a.position - b.position).map(sourceRowToArticle),
     guidelinesSearched: row.guidelines_searched === true,
+    caseReports: parseCaseReports(row.case_reports_at, row.case_reports),
     feedback: parseFeedback(row.turn_feedback?.[0]),
     createdAt: row.created_at,
   };
@@ -321,4 +334,10 @@ export async function continueConversation(
 ): Promise<RunResult> {
   if (!(await createClient())) return continueDemoConversation(searchId, question);
   return invokeSearch(retryTurnId ? { searchId, question, retryTurnId } : { searchId, question });
+}
+
+/** "Ver relatos de caso" de uma resposta (1 crédito, devolvido se falhar). Não existe na demonstração. */
+export async function findCaseReports(searchId: string, turnId: string): Promise<RunResult> {
+  if (!(await createClient())) return { ok: false, error: "Os relatos de caso não estão disponíveis na demonstração." };
+  return invokeSearch({ searchId, caseReportsTurnId: turnId });
 }

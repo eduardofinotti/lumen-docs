@@ -15,6 +15,7 @@ const turn: Turn = {
   conclusion: null,
   sources: [article],
   guidelinesSearched: true,
+  caseReports: null,
   feedback: null,
   createdAt: "2026-10-21T12:00:00Z",
 };

@@ -41,6 +41,8 @@ export interface Turn {
   sources: Article[];
   /** A busca procurou diretrizes brasileiras (false em respostas antigas ou que reaproveitaram artigos). */
   guidelinesSearched: boolean;
+  /** Relatos de caso sobre o tema: null enquanto o médico não pediu. */
+  caseReports: Article[] | null;
   /** Voto do médico nesta resposta; null sem voto. */
   feedback: Feedback | null;
   createdAt: string;

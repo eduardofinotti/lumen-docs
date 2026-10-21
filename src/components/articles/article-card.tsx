@@ -50,14 +50,15 @@ export function ArticleCard({
   article,
   index,
   highlighted = false,
-  anchorId = `artigo-${index}`,
+  anchorId = index ? `artigo-${index}` : null,
   anchorKey,
   save,
   footer,
   className,
 }: {
   article: Article;
-  index: number;
+  /** Número da citação [n]; sem ele (relatos de caso), o card não mostra número. */
+  index?: number;
   highlighted?: boolean;
   /** `null`: sem id (a mesma resposta aparece no painel e na lista do celular). */
   anchorId?: string | null;
@@ -81,9 +82,11 @@ export function ArticleCard({
       )}
     >
       <div className="flex items-start gap-3">
-        <span className="font-medium text-lumen" aria-hidden="true">
-          [{index}]
-        </span>
+        {index && (
+          <span className="font-medium text-lumen" aria-hidden="true">
+            [{index}]
+          </span>
+        )}
         <div className="min-w-0 flex-1 space-y-3">
           <h3 className="text-title text-ink">{article.title}</h3>
           <p className="text-body-sm text-ink-secondary">
