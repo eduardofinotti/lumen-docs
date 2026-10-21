@@ -1,6 +1,7 @@
 // Lúmen · Edge Function `search`
 // Uma pesquisa é uma conversa (`searches`) com turnos (`search_turns`); cada turno tem suas fontes.
-// Primeira pergunta: query PubMed (Claude) → esearch (geral + diretrizes brasileiras) → efetch → síntese (Claude) → banco.
+// Primeira pergunta: query PubMed (Claude) → esearch (geral + diretrizes brasileiras) + preprints do medRxiv
+// (Europe PMC) → efetch → síntese (Claude) → banco.
 // Continuação: o roteador (Claude) reescreve a pergunta e decide entre busca nova e reaproveitar
 // os artigos já encontrados; depois segue o mesmo caminho.
 // Deploy: supabase functions deploy search
@@ -10,10 +11,12 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 import { decodeEntities, isRetracted, publicationTypesOf, splitConclusion, titleOf, type EvidenceStrength } from "./answer.ts";
 import { brazilianGuidelineQuery, guidelineDays, isBrazilianGuideline, mergeWithGuidelines } from "./guidelines.ts";
+import { parsePreprint, preprintDays, toEuropePmcQuery, withPreprints, type EuropePmcRecord, type Preprint } from "./preprints.ts";
 import { buildHistory, isStalePending, parseRouterReply, selectReuseArticles, type RouterDecision } from "./conversation.ts";
 import { CONVERSATION_NOTE, SYSTEM_QUERY, SYSTEM_ROUTER, SYSTEM_SUMMARY, SYSTEM_SYNTHESIS } from "./prompts.ts";
 
 const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
+const EUROPE_PMC = "https://www.ebi.ac.uk/europepmc/webservices/rest/search";
 const MODEL = "claude-sonnet-5-5";
 const MAX_ARTICLES = 12;
 const MAX_TURNS = 20;
@@ -225,8 +228,8 @@ Deno.serve(async (req) => {
 
     if (decision.action === "search") {
       pubmedQuery = decision.pubmedQuery ?? await ask(anthropic, CALLS.query, standalone);
-      // Busca extra só por diretrizes brasileiras; se falhar, segue com a geral.
-      const [generalIds, guidelineIds] = await Promise.all([
+      // Buscas extras (diretrizes brasileiras e preprints); se uma falhar, segue com a geral.
+      const [generalIds, guidelineIds, preprints] = await Promise.all([
         esearch(pubmedQuery, rangeDays(dateRange), MAX_ARTICLES),
         esearch(brazilianGuidelineQuery(pubmedQuery), guidelineDays(dateRange), 6).then((ids) => {
           guidelinesSearched = true;
@@ -235,19 +238,24 @@ Deno.serve(async (req) => {
           console.error("busca de diretrizes brasileiras falhou", e);
           return [] as string[];
         }),
+        searchPreprints(toEuropePmcQuery(pubmedQuery, preprintDays(dateRange))).catch((e) => {
+          console.error("busca de preprints falhou", e);
+          return [] as Preprint[];
+        }),
       ]);
       const pmids = [...new Set([...guidelineIds, ...generalIds])];
-      if (pmids.length === 0) {
+      if (pmids.length === 0 && preprints.length === 0) {
         await saveTurn({ status: "no_evidence", pubmed_query: pubmedQuery });
         return json({ searchId: sid, turnId: id, status: "no_evidence", standaloneQuestion: shownStandalone });
       }
       // Artigo que já apareceu na conversa reaproveita o resumo em português.
       const knownSummaries = new Map(known.filter((r) => r.summary_pt).map((r) => [r.pmid, r.summary_pt]));
-      const fetched = new Map<string, Article>((await efetch(pmids))
+      const fetched = new Map<string, Article>((pmids.length > 0 ? await efetch(pmids) : [])
         .map((a) => [a.pmid, { ...a, summaryPt: knownSummaries.get(a.pmid) ?? null }]));
       const pick = (ids: string[]) => ids.map((p) => fetched.get(p)).filter((a): a is Article => a !== undefined);
       // A busca de diretrizes traz candidatos; só fica no topo o que é de fato diretriz brasileira.
-      articles = mergeWithGuidelines(pick(guidelineIds).filter((a) => a.evidenceLabel === BR_GUIDELINE), pick(generalIds), MAX_ARTICLES);
+      const reviewed = mergeWithGuidelines(pick(guidelineIds).filter((a) => a.evidenceLabel === BR_GUIDELINE), pick(generalIds), MAX_ARTICLES);
+      articles = withPreprints(reviewed, preprints.map((p) => ({ ...p, summaryPt: knownSummaries.get(p.pmid) ?? null })), MAX_ARTICLES);
     } else {
       const turnsById = new Map(previous.map((t) => [t.id, t]));
       const pmids = selectReuseArticles(known.map((r) => {
@@ -260,7 +268,7 @@ Deno.serve(async (req) => {
 
     // 5. Síntese em português ---------------------------------------------
     const context = articles.map((a, i) =>
-      `[${i + 1}] PMID ${a.pmid}${a.retracted ? "\nATENÇÃO: ARTIGO RETRATADO" : ""}\nTítulo: ${a.title}\nTipo: ${a.evidenceLabel === BR_GUIDELINE ? "DIRETRIZ BRASILEIRA; " : ""}${a.publicationTypes.join(", ")}\nPeriódico/ano: ${a.journal} ${a.year ?? ""}\nResumo: ${a.abstract || "(sem resumo)"}`
+      `[${i + 1}] PMID ${a.pmid}${a.retracted ? "\nATENÇÃO: ARTIGO RETRATADO" : ""}\nTítulo: ${a.title}\nTipo: ${a.evidenceLabel === BR_GUIDELINE ? "DIRETRIZ BRASILEIRA; " : a.evidenceLabel === "Preprint" ? "PREPRINT SEM REVISÃO POR PARES; " : ""}${a.publicationTypes.join(", ")}\nPeriódico/ano: ${a.journal} ${a.year ?? ""}\nResumo: ${a.abstract || "(sem resumo)"}`
     ).join("\n\n");
 
     const synthesis = await ask(anthropic, CALLS.synthesis,
@@ -392,6 +400,16 @@ async function esearch(term: string, days: number | null, retmax: number): Promi
   const r = await fetchRetry(`${EUTILS}/esearch.fcgi?${ncbiParams(extra)}`);
   const j = await r.json();
   return (j.esearchresult?.idlist ?? []) as string[];
+}
+
+/** Preprints do medRxiv no Europe PMC (sem chave). Já publicados em revista ficam de fora. */
+async function searchPreprints(query: string): Promise<Preprint[]> {
+  const params = new URLSearchParams({ query, format: "json", resultType: "core", pageSize: "6" });
+  const r = await fetch(`${EUROPE_PMC}?${params}`, { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(`Europe PMC ${r.status}`);
+  const j = await r.json();
+  const records = (j.resultList?.result ?? []) as EuropePmcRecord[];
+  return records.map(parsePreprint).filter((p): p is Preprint => p !== null);
 }
 
 async function efetch(pmids: string[]): Promise<Article[]> {
