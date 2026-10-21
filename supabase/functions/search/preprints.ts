@@ -26,11 +26,36 @@ export type Preprint = {
 
 const FIELDS = "MeSH Terms|MeSH|mh|Title/Abstract|tiab|Title|ti";
 
-/** A busca do PubMed na sintaxe do Europe PMC: título e resumo (preprint não tem MeSH), só medRxiv, no período. */
+/** Grupos ligados por AND no nível de fora (AND dentro de parênteses ou de aspas não divide). */
+function topLevelGroups(query: string): string[] {
+  const groups: string[] = [];
+  let depth = 0;
+  let quoted = false;
+  let start = 0;
+  for (let i = 0; i < query.length; i++) {
+    const c = query[i];
+    if (c === '"') quoted = !quoted;
+    else if (!quoted && c === "(") depth++;
+    else if (!quoted && c === ")") depth--;
+    else if (!quoted && depth === 0 && /^\sAND\s/.test(query.slice(i, i + 5))) {
+      groups.push(query.slice(start, i).trim());
+      start = i + 5;
+      i += 4;
+    }
+  }
+  groups.push(query.slice(start).trim());
+  return groups.filter(Boolean);
+}
+
+const MAX_GROUPS = 2;
+
+/**
+ * A busca do PubMed na sintaxe do Europe PMC: título e resumo (preprint não tem MeSH), só medRxiv, no período.
+ * Só os 2 primeiros grupos (população e intervenção): o medRxiv é pequeno e o grupo do desfecho zera a busca.
+ */
 export function toEuropePmcQuery(pubmedQuery: string, days: number, today: Date = new Date()): string {
-  const topic = pubmedQuery
-    .replace(/\s*AND\s+humans\[(MeSH Terms|mh)\]/gi, "")
-    .replace(/humans\[(MeSH Terms|mh)\]\s*AND\s*/gi, "")
+  const groups = topLevelGroups(pubmedQuery).filter((g) => !/^humans\[(MeSH Terms|mh)\]$/i.test(g));
+  const topic = groups.slice(0, MAX_GROUPS).join(" AND ")
     .replace(new RegExp(`"([^"]+)"\\[(${FIELDS})\\]`, "gi"), 'TITLE_ABS:"$1"')
     .replace(new RegExp(`([^\\s()"]+)\\[(${FIELDS})\\]`, "gi"), "TITLE_ABS:$1")
     .replace(/("[^"]+"|[^\s()"]+)\[[^\]]+\]/g, "$1")

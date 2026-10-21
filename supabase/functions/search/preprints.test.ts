@@ -16,9 +16,26 @@ describe("toEuropePmcQuery", () => {
     );
   });
 
+  test("fica só com os 2 primeiros grupos (população e intervenção): o medRxiv é pequeno e o desfecho zera a busca", () => {
+    const q = toEuropePmcQuery(
+      '(semaglutide[Title/Abstract] OR Ozempic[Title/Abstract]) AND ("chronic kidney disease"[Title/Abstract] OR CKD[Title/Abstract]) AND (eGFR[Title/Abstract] OR "renal outcome*"[Title/Abstract]) AND humans[MeSH Terms]',
+      365,
+      today,
+    );
+    expect(q.startsWith(
+      '(TITLE_ABS:semaglutide OR TITLE_ABS:Ozempic) AND (TITLE_ABS:"chronic kidney disease" OR TITLE_ABS:CKD) AND SRC:PPR',
+    )).toBe(true);
+    expect(q).not.toContain("eGFR");
+  });
+
+  test("AND dentro de parênteses ou de aspas não conta como grupo", () => {
+    const q = toEuropePmcQuery('(a[tiab] OR (b[tiab] AND c[tiab])) AND "x AND y"[tiab] AND z[tiab]', 365, today);
+    expect(q.startsWith('(TITLE_ABS:a OR (TITLE_ABS:b AND TITLE_ABS:c)) AND TITLE_ABS:"x AND y" AND SRC:PPR')).toBe(true);
+  });
+
   test("aceita as abreviações [tiab] e [mh] e descarta outros campos", () => {
     const q = toEuropePmcQuery('dengue[tiab] AND "Anticoagulants"[mh] AND Guideline[pt]', 1826, today);
-    expect(q.startsWith('TITLE_ABS:dengue AND TITLE_ABS:"Anticoagulants" AND Guideline AND SRC:PPR')).toBe(true);
+    expect(q.startsWith('TITLE_ABS:dengue AND TITLE_ABS:"Anticoagulants" AND SRC:PPR')).toBe(true);
     expect(q).toContain("FIRST_PDATE:[2021-10-21 TO 2026-10-21]");
   });
 });
